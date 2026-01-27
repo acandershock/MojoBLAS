@@ -4,9 +4,9 @@ from gpu import thread_idx, block_dim, block_idx, barrier
 
 # level1.iamax
 # finds the index of the first element having maximum absolute value
-fn iamax_device[BLOCK: Int](n: Int, sx: UnsafePointer[Float32],
+fn iamax_device[BLOCK: Int](n: Int, sx: UnsafePointer[Float32, MutAnyOrigin],
                             incx: Int,
-                            result: UnsafePointer[Scalar[DType.int64]]):
+                            result: UnsafePointer[Scalar[DType.int64], MutAnyOrigin]):
     # current issues:
     #                   1. Only supports n <= TBsize
     #                   2. Doesn't support incx > 1
@@ -26,7 +26,7 @@ fn iamax_device[BLOCK: Int](n: Int, sx: UnsafePointer[Float32],
     global_tid = block_dim.x * block_idx.x + thread_idx.x
 
     if global_tid < n:
-        shared[local_tid] = global_tid
+        shared[local_tid] = Int64(global_tid)
 
     smax = abs(sx[shared[local_tid]])
     stride = block_dim.x // 2
