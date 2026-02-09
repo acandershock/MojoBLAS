@@ -9,7 +9,9 @@ from layout import Layout, LayoutTensor
 from os.atomic import Atomic
 
 fn dot_device[
-    in_layout: Layout, size: Int, dtype: DType
+    in_layout: Layout,
+    size: Int,
+    dtype: DType
 ](
     output: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     a: LayoutTensor[dtype, in_layout, ImmutAnyOrigin],
