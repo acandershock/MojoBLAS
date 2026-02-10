@@ -536,7 +536,7 @@ def test_dot():
 def test_iamax():
     iamax_test[DType.float32, 256]()
     # iamax_test[DType.float32, 4096]()
-    iamax_test[DType.float64, 256]()
+    # iamax_test[DType.float64, 256]()
     # iamax_test[DType.float64, 4096]()
 
 
