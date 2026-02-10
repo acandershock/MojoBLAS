@@ -2,6 +2,7 @@ from .level1.asum_device import *
 from .level1.axpy_device import *
 from .level1.scal_device import *
 from .level1.copy_device import *
+from .level1.rot_device import *
 from .level1.swap_device import *
 from .level1.dot_device import *
 from .level1.iamax_device import *

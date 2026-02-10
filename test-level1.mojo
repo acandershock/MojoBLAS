@@ -4,9 +4,9 @@ from gpu.host import DeviceContext
 from gpu import block_dim, grid_dim, thread_idx
 from layout import Layout, LayoutTensor
 
-from src import axpy_device, scal_device, copy_device, swap_device, dot_device, iamax_device, asum_device
-from random import rand, seed
-from math import ceildiv
+from src import axpy_device, scal_device, copy_device, swap_device, dot_device, iamax_device, asum_device, rot_device
+from random import rand, seed, random_float64
+from math import ceildiv, sin, cos
 from python import Python, PythonObject
 
 comptime TBsize = 512
@@ -141,6 +141,84 @@ def axpy_test[
         for i in range(size):
             assert_almost_equal(Scalar[dtype](py=sp_result[i]), mojo_res[i], atol=atol)
 
+
+def rot_test[
+    dtype: DType,
+    size:  Int
+]():
+    with DeviceContext() as ctx:
+        print("[ rot test:", dtype, "]")
+
+        d_x = ctx.enqueue_create_buffer[dtype](size)
+        x = ctx.enqueue_create_host_buffer[dtype](size)
+        d_y = ctx.enqueue_create_buffer[dtype](size)
+        y = ctx.enqueue_create_host_buffer[dtype](size)
+
+        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype, size](y.unsafe_ptr(), -10000, 10000)
+
+        ctx.enqueue_copy(d_x, x)
+        ctx.enqueue_copy(d_y, y)
+
+        # Generate random angle for sin and cos
+        var angle = random_float64(0, 2 * 3.14159265359)
+        var c = Scalar[dtype](cos(angle))
+        var s = Scalar[dtype](sin(angle))
+
+        # Launch Mojo GPU kernel
+        comptime kernel = rot_device[TBsize, dtype]
+        ctx.enqueue_function[kernel, kernel](
+            size,
+            d_x, 1,
+            d_y, 1,
+            c, s,
+            grid_dim=ceildiv(size, TBsize),     # total thread blocks
+            block_dim=TBsize                    # threads per block
+        )
+
+        ctx.synchronize()
+
+        # Import SciPy and numpy
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_x = Python.list()
+        py_y = Python.list()
+
+        for i in range(size):
+            py_x.append(x[i])
+            py_y.append(y[i])
+
+        # srot - float32, drot - float64
+        if dtype == DType.float32:
+            np_x = np.array(py_x, dtype=np.float32)
+            np_y = np.array(py_y, dtype=np.float32)
+            var res = sp_blas.srot(np_x, np_y, c=c, s=s)
+            # rot returns updated x and y arrays in a single variable
+            np_x = res[0]
+            np_y = res[1]
+        elif dtype == DType.float64:
+            np_x = np.array(py_x, dtype=np.float64)
+            np_y = np.array(py_y, dtype=np.float64)
+            var res = sp_blas.drot(np_x, np_y, c=c, s=s)
+            np_x = res[0]
+            np_y = res[1]
+        else:
+            print(dtype , " is not supported by SciPy")
+            return
+
+        with d_x.map_to_host() as x_result:
+            with d_y.map_to_host() as y_result:
+                # Check x vector
+                for i in range(size):
+                    var expected_x = Scalar[dtype](py=np_x[i])
+                    assert_almost_equal(x_result[i], expected_x, atol=atol)
+
+                # Check y vector
+                for i in range(size):
+                    var expected_y = Scalar[dtype](py=np_y[i])
+                    assert_almost_equal(y_result[i], expected_y, atol=atol)
 
 def scal_test[
     dtype: DType,
@@ -436,6 +514,12 @@ def test_copy():
     copy_test[DType.float32, 4096]()
     copy_test[DType.float64, 256]()
     copy_test[DType.float64, 4096]()
+
+def test_rot():
+    rot_test[DType.float32, 256]()
+    # rot_test[DType.float32, 4096]()
+    rot_test[DType.float64, 256]()
+    # rot_test[DType.float64, 4096]()
 
 def test_swap():
     swap_test[DType.float32, 256]()
