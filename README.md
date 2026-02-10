@@ -31,14 +31,37 @@ NVIDIA and AMD hardware, and matches performance in current C++ BLAS libraries.
         source ~/.bashrc
         ```
         - For Macs with bash shells, sometimes this command fails to add the `pixi` path to the login shell, which means this path won't be remembered by future shells. If you are running into an issue where new bash shells can't find the pixi executable, try adding it to your bash profile with:
-        ```
-        echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' >> ~/.bash_profile
-        source ~/.bash_profile
-        ```
+            ```
+            echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' >> ~/.bash_profile
+            source ~/.bash_profile
+            ```
 3. Test `pixi` installation
 - If `pixi` has been successfully installed, you will see the `pixi` version return with this test:
     ```
     pixi --version
+    ```
+4. For Macs, ensure you have XCode downloaded.
+- Check your application folder with:
+    ```
+    ls /Applications/Xcode.app
+    ```
+- If you see a list of folder contents, you're good to go!
+- If not, download XCode from the App Store.
+- Then, change the command line tools to point to XCode's toolchain with:
+    ```
+    sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+    ```
+- Accept XCode's license agreement.
+    ```
+    sudo xcodebuild -license accept
+    ```
+- Download MetalToolchain:
+    ```
+    sudo xcodebuild -downloadComponent MetalToolchain
+    ```
+- And check it was successfully downloaded with:
+    ```
+    xcrun --find metallib
     ```
 
 ### Usage ###

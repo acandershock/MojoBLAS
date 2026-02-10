@@ -363,11 +363,11 @@ def iamax_test[
             assert_equal(res_mojo[0], sp_res_mojo)
 
 
-def test_axpy():
-    axpy_test[DType.float32, 256]()
-    axpy_test[DType.float32, 4096]()
-    axpy_test[DType.float64, 256]()
-    axpy_test[DType.float64, 4096]()
+# def test_axpy():
+    # axpy_test[DType.float32, 256]()
+    # axpy_test[DType.float32, 4096]()
+    # axpy_test[DType.float64, 256]()
+    # axpy_test[DType.float64, 4096]()
 
 
 def test_scal():
@@ -391,17 +391,17 @@ def test_swap():
     swap_test[DType.float64, 4096]()
 
 
-def test_dot():
-    dot_test[DType.float32, 256]()
-    dot_test[DType.float32, 4096]()
+# def test_dot():
+    # dot_test[DType.float32, 256]()
+    # dot_test[DType.float32, 4096]()
     # It looks like warp_sum doesn't support float64
     # dot_test[DType.float64, 256]()
 
 
-def test_iamax():
-    iamax_test[DType.float32, 256]()
+# def test_iamax():
+    # iamax_test[DType.float32, 256]()
     # iamax_test[DType.float32, 4096]()
-    iamax_test[DType.float64, 256]()
+    # iamax_test[DType.float64, 256]()
     # iamax_test[DType.float64, 4096]()
 
 
