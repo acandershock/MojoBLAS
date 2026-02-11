@@ -3,6 +3,7 @@ from sys import has_accelerator
 from gpu.host import DeviceContext
 from gpu import block_dim, grid_dim, thread_idx
 from layout import Layout, LayoutTensor
+from math import sqrt
 
 from src import *
 from random import rand, seed, random_float64
@@ -288,9 +289,8 @@ def nrm2_test[
         generate_random_arr[dtype, size](x.unsafe_ptr(), -1000, 1000)
         ctx.enqueue_copy(d_x, x)
 
-        # TODO: implement this
         d_res.enqueue_fill(-1) # set result to -1 for now
-        # blas_nrm2[dtype](size, d_x.unsafe_ptr(), 1, d_res.unsafe_ptr(), ctx)
+        blas_nrm2[dtype](size, d_x.unsafe_ptr(), 1, d_res.unsafe_ptr(), ctx)
 
          # Import SciPy and numpy
         sp = Python.import_module("scipy")
@@ -317,9 +317,10 @@ def nrm2_test[
         # Move Mojo result from CPU to GPU and compare to SciPy
         sp_res_mojo = Scalar[dtype](py=sp_res)
         with d_res.map_to_host() as res_mojo:
+            res_mojo[0] = sqrt(res_mojo[0])
             # print("out:", res_mojo[0])
             # print("expected:", sp_res)
-            assert_equal(res_mojo[0], sp_res_mojo)
+            assert_almost_equal(res_mojo[0], sp_res_mojo)
 
 
 def rot_test[

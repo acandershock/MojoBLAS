@@ -5,4 +5,5 @@ from .copy_device import *
 from .rot_device import *
 from .swap_device import *
 from .dot_device import *
+from .nrm2_device import *
 from .iamax_device import *
