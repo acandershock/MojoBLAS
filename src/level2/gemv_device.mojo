@@ -112,6 +112,6 @@ fn blas_gemv[dtype: DType](
             block_dim=TBsize,
         )
     else:
-        return
+        raise Error("blas_gemv: Unsupported type")
 
     ctx.synchronize()
