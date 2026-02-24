@@ -7,7 +7,6 @@ from src import *
 from math import sin, cos
 from python import Python, PythonObject
 
-comptime TBsize = 512
 comptime atol = 1.0E-4
 
 
