@@ -1,5 +1,4 @@
 from testing import assert_equal, assert_almost_equal, TestSuite
-from sys import has_accelerator
 from gpu.host import DeviceContext
 from math import sqrt
 from complex import *
