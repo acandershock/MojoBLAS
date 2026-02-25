@@ -1,0 +1,14 @@
+name: ci-nvidia-3060
+
+on:
+  pull_request:
+
+jobs:
+  gpu-mojo:
+    if: contains(fromJSON('["OWNER","COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: pixi run mojo test-level1.mojo
+      - run: pixi run mojo test-level2.mojo
