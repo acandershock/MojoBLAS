@@ -62,7 +62,7 @@ def ger_test[
             np_x = np.array(py_x, dtype=np.float32)
             np_y = np.array(py_y, dtype=np.float32)
             sp_res = sp_blas.sger(alpha, np_x, np_y, 1, 1, np_a)
-        if dtype == DType.float64:
+        elif dtype == DType.float64:
             np_a = np.array(py_a, dtype=np.float64).reshape(m,n)
             np_x = np.array(py_x, dtype=np.float64)
             np_y = np.array(py_y, dtype=np.float64)
@@ -88,9 +88,9 @@ def ger_test[
 
 def test_ger():
     ger_test[DType.float32, 64, 64]()
-    # ger_test[DType.float32, 256, 256]()
-    # ger_test[DType.float64, 64, 64]()
-    # ger_test[DType.float64, 256, 256]()
+    ger_test[DType.float32, 256, 256]()
+    ger_test[DType.float64, 64, 64]()
+    ger_test[DType.float64, 256, 256]()
 
 def main():
     print("--- MojoBLAS Level 2 routines testing ---")

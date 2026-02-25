@@ -83,6 +83,7 @@ fn blas_ger[dtype: DType](
     
     var total = m * n
 
+    @parameter
     if dtype == DType.float32:
         ctx.enqueue_function[sger_device[TBsize], sger_device[TBsize]](
             m, n, alpha,
@@ -102,6 +103,6 @@ fn blas_ger[dtype: DType](
             block_dim=TBsize,
         )
     else:
-        return
+        raise Error("blas_ger: Unsupported type")
 
     ctx.synchronize()
