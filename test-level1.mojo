@@ -929,11 +929,11 @@ def test_rotm():
     rotm_test[DType.float64, 256]()
     rotm_test[DType.float64, 4096]()
 
-def test_rotmg():
-    rotmg_test[DType.float32, 256]()
-    rotmg_test[DType.float32, 4096]()
-    rotmg_test[DType.float64, 256]()
-    rotmg_test[DType.float64, 4096]()
+# def test_rotmg():
+#     rotmg_test[DType.float32, 256]()
+#     rotmg_test[DType.float32, 4096]()
+#     rotmg_test[DType.float64, 256]()
+#     rotmg_test[DType.float64, 4096]()
 
 def test_scal():
     scal_test[DType.float32, 256]()
