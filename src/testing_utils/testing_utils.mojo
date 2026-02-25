@@ -57,7 +57,6 @@ fn check_gemm_error[dtype: DType](
         return error_norm == Scalar[dtype](0)
 
     var err = error_norm / denom
-    # print("DEBUG: err =", err)
 
     @parameter
     if dtype == DType.float32:
