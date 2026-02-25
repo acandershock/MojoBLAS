@@ -52,12 +52,12 @@ def gemv_test[
             y_d.unsafe_ptr(), 1,
             ctx,
         )
-        
+
         # Import SciPy and numpy
         sp = Python.import_module("scipy")
         np = Python.import_module("numpy")
         sp_blas = sp.linalg.blas
-        
+
         py_A = Python.list()
         py_x = Python.list()
         py_y = Python.list()
@@ -82,7 +82,7 @@ def gemv_test[
         else:
             print("Unsupported type: ", dtype)
             return
-        
+
         # Referred to BLAS++ for an alternative error computation
         # https://github.com/icl-utk-edu/blaspp/blob/master/test/check_gemm.hh
         # NOTE: might use this for dot, gemv, ger, geru, gemm, symv, hemv, symm, trmv, trsv?, trmm, trsm?
@@ -97,7 +97,7 @@ def gemv_test[
             var ok = check_gemm_error[dtype](1, y_len, x_len, alpha, beta, norm_A, norm_x, norm_y, norm_diff)
             assert_true(ok)
 
-            
+
 def ger_test[
     dtype: DType,
     m:  Int,
@@ -121,7 +121,12 @@ def ger_test[
         ctx.enqueue_copy(y_device, y)
 
         var alpha = generate_random_scalar[dtype](0.0, 1.0)
-        
+
+        # Import SciPy and numpy
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
         # Move a and b to a SciPy-compatible array and run SciPy BLAS routine
         py_a = Python.list()
         py_x = Python.list()
@@ -164,7 +169,7 @@ def ger_test[
                 for j in range(n):
                     assert_almost_equal(Scalar[dtype](py=sp_res[i][j]), res_mojo[(i*n)+j], atol=atol)
 
-                    
+
 def test_gemv():
     gemv_test[DType.float32,  64,  64, False]()
     gemv_test[DType.float32,  64,  64, True]()
@@ -174,7 +179,7 @@ def test_gemv():
     gemv_test[DType.float32, 1024,  64, True]()
     gemv_test[DType.float64, 1024,  64, False]()
     gemv_test[DType.float64, 1024,  64, True]()
-    
+
 def test_ger():
     ger_test[DType.float32, 64, 64]()
     ger_test[DType.float32, 256, 256]()
