@@ -223,6 +223,80 @@ def syr_test[
             for i in range(n * n):
                 assert_almost_equal(res_mojo[i], Scalar[dtype](py=sp_flat[i]), atol=atol)
 
+def syr2_test[
+    dtype: DType,
+    n: Int,
+    uplo: Int,
+]():
+    with DeviceContext() as ctx:
+        A_d = ctx.enqueue_create_buffer[dtype](n * n)
+        A = ctx.enqueue_create_host_buffer[dtype](n * n)
+
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+        x = ctx.enqueue_create_host_buffer[dtype](n)
+
+        y_d = ctx.enqueue_create_buffer[dtype](n)
+        y = ctx.enqueue_create_host_buffer[dtype](n)
+
+        generate_random_arr[dtype, n * n](A.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype, n](x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype, n](y.unsafe_ptr(), -100, 100)
+
+        ctx.enqueue_copy(A_d, A)
+        ctx.enqueue_copy(x_d, x)
+        ctx.enqueue_copy(y_d, y)
+        ctx.synchronize()
+
+        var alpha = generate_random_scalar[dtype](-100, 100)
+
+        blas_syr2[dtype](
+            uplo,
+            n,
+            alpha,
+            x_d.unsafe_ptr(), 1,
+            y_d.unsafe_ptr(), 1,
+            A_d.unsafe_ptr(),
+            n,
+            ctx,
+        )
+
+        # Import SciPy and numpy
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_A = Python.list()
+        py_x = Python.list()
+        py_y = Python.list()
+
+        for i in range(n * n):
+            py_A.append(A[i])
+        for i in range(n):
+            py_x.append(x[i])
+            py_y.append(y[i])
+
+        var sp_res: PythonObject
+        if dtype == DType.float32:
+            np_A = np.array(py_A, dtype=np.float32).reshape(n, n)
+            np_x = np.array(py_x, dtype=np.float32)
+            np_y = np.array(py_y, dtype=np.float32)
+            sp_res = sp_blas.ssyr2(alpha, np_x, np_y, lower=uplo, a=np_A, overwrite_a=False)
+
+        elif dtype == DType.float64:
+            np_A = np.array(py_A, dtype=np.float64).reshape(n, n)
+            np_x = np.array(py_x, dtype=np.float64)
+            np_y = np.array(py_y, dtype=np.float64)
+            sp_res = sp_blas.dsyr2(alpha, np_x, np_y, lower=uplo, a=np_A, overwrite_a=False)
+        else:
+            print("Unsupported type: ", dtype)
+            return
+
+        sp_flat = sp_res.flatten()
+
+        with A_d.map_to_host() as res_mojo:
+            for i in range(n * n):
+                assert_almost_equal(res_mojo[i], Scalar[dtype](py=sp_flat[i]), atol=atol)
+
 
 def test_gemv():
     gemv_test[DType.float32,  64,  64, False]()
@@ -241,6 +315,12 @@ def test_ger():
     ger_test[DType.float64, 256, 256]()
    
 def test_syr():
+    syr_test[DType.float32,  256, 1]()
+    syr_test[DType.float32, 1024, 0]()
+    syr_test[DType.float64,  256, 0]()
+    syr_test[DType.float64, 1024, 1]()
+
+def test_syr2():
     syr_test[DType.float32,  256, 1]()
     syr_test[DType.float32, 1024, 0]()
     syr_test[DType.float64,  256, 0]()
