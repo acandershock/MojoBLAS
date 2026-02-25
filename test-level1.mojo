@@ -1,32 +1,13 @@
 from testing import assert_equal, assert_almost_equal, TestSuite
-from sys import has_accelerator
 from gpu.host import DeviceContext
-from gpu import block_dim, grid_dim, thread_idx
-from layout import Layout, LayoutTensor
 from math import sqrt
 from complex import *
 
 from src import *
-from random import rand, seed, random_float64
-from math import ceildiv, sin, cos
+from math import sin, cos
 from python import Python, PythonObject
 
-comptime TBsize = 512
 comptime atol = 1.0E-4
-
-def generate_random_scalar[
-    dtype: DType,
-](
-    min_value: Scalar[dtype],
-    max_value: Scalar[dtype]
-) -> Scalar[dtype]:
-    # Generate random values in [0, 1]
-    seed()
-    var result = Scalar[dtype]()
-    rand[dtype](UnsafePointer(to=result), 1)
-
-    range = max_value - min_value
-    return min_value + result * range
 
 
 def asum_test[
@@ -510,7 +491,7 @@ def nrm2_test[
 def rot_test[
     dtype: DType,
     size:  Int
-]():
+]() where dtype.is_floating_point():   # neeeded for sin and cos
     with DeviceContext() as ctx:
     #     print("[ rot test:", dtype, "]")
 
@@ -526,7 +507,7 @@ def rot_test[
         ctx.enqueue_copy(d_y, y)
 
         # Generate random angle for sin and cos
-        var angle = random_float64(0, 2 * 3.14159265359)
+        var angle = generate_random_scalar[dtype](0, 2 * 3.14159265359)
         var c = Scalar[dtype](cos(angle))
         var s = Scalar[dtype](sin(angle))
 

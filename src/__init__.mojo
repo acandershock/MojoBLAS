@@ -1,17 +1,4 @@
-from .level1.asum_device import *
-from .level1.axpy_device import *
-from .level1.scal_device import *
-from .level1.copy_device import *
-from .level1.rot_device import *
-from .level1.rotg import *
-from .level1.rotm_device import *
-from .level1.swap_device import *
-from .level1.dot_device import *
-from .level1.dotc_device import *
-from .level1.dotu_device import *
-from .level1.nrm2_device import *
-from .level1.iamax_device import *
-
-from .level2.ger_device import *
-
-from .testing_utils.testing_utils import *
+from .testing_utils import *
+from .level1 import *
+from .level2 import *
+# from .level3 import *
