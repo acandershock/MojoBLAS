@@ -1,8 +1,7 @@
 from random import rand, seed
 from math import sqrt
 
-comptime tol32: Float32 = 1e-8
-comptime tol64: Float64 = 1e-16
+from python import Python
 
 def generate_random_arr[
     dtype: DType,
@@ -47,7 +46,11 @@ fn check_gemm_error[dtype: DType](
     B_norm: Scalar[dtype],
     C_ini_norm: Scalar[dtype],
     error_norm: Scalar[dtype]
-) -> Bool:
+) raises -> Bool:
+    np = Python.import_module("numpy")
+    tol32 = Scalar[DType.float32](py=np.finfo(np.float32).eps)
+    tol64 = Scalar[DType.float64](py=np.finfo(np.float64).eps)
+
     var alpha_ = max(abs(alpha), Scalar[dtype](1))
     var beta_  = max(abs(beta),  Scalar[dtype](1))
     var denom  = sqrt(Scalar[dtype](k) + Scalar[dtype](2)) * alpha_ * A_norm * B_norm
@@ -81,7 +84,10 @@ fn check_syr_error[dtype: DType](
     y_norm: Scalar[dtype],
     A_ini_norm: Scalar[dtype],
     error_norm: Scalar[dtype]
-) -> Bool:
+) raises -> Bool:
+    np = Python.import_module("numpy")
+    tol32 = Scalar[DType.float32](py=np.finfo(np.float32).eps)
+    tol64 = Scalar[DType.float64](py=np.finfo(np.float64).eps)
 
     var alpha_ = max(abs(alpha), Scalar[dtype](1))
 
@@ -125,5 +131,6 @@ fn frobenius_norm_symmetric[dtype: DType](
                     sum += val * val
                 else:
                     sum += Scalar[dtype](2) * val * val
+
 
     return sqrt(sum)

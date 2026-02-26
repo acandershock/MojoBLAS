@@ -249,7 +249,7 @@ def syr2_test[
 
         var alpha = generate_random_scalar[dtype](-100, 100)
 
-        var norm_A = frobenius_norm_symmetric[dtype](A.unsafe_ptr(), n * n, n, uplo)
+        var norm_A = frobenius_norm[dtype](A.unsafe_ptr(), n * n)
         var norm_x = frobenius_norm[dtype](x.unsafe_ptr(), n)
         var norm_y = frobenius_norm[dtype](y.unsafe_ptr(), n)
 
@@ -302,11 +302,9 @@ def syr2_test[
             for i in range(n * n):
                 error[i] = res_mojo[i] - Scalar[dtype](py=sp_flat[i])
 
-            var error_norm = frobenius_norm_symmetric[dtype](
+            var error_norm = frobenius_norm[dtype](
                 error.unsafe_ptr(),
-                n,
-                n,
-                uplo
+                n*n
             )
 
             var passed = check_syr_error[dtype](
@@ -321,33 +319,33 @@ def syr2_test[
             assert_true(passed)
 
 
-# def test_gemv():
-#     gemv_test[DType.float32,  64,  64, False]()
-#     gemv_test[DType.float32,  64,  64, True]()
-#     gemv_test[DType.float64,  64,  64, False]()
-#     gemv_test[DType.float64,  64,  64, True]()
-#     gemv_test[DType.float32, 1024,  64, False]()
-#     gemv_test[DType.float32, 1024,  64, True]()
-#     gemv_test[DType.float64, 1024,  64, False]()
-#     gemv_test[DType.float64, 1024,  64, True]()
+def test_gemv():
+    gemv_test[DType.float32,  64,  64, False]()
+    gemv_test[DType.float32,  64,  64, True]()
+    gemv_test[DType.float64,  64,  64, False]()
+    gemv_test[DType.float64,  64,  64, True]()
+    gemv_test[DType.float32, 1024,  64, False]()
+    gemv_test[DType.float32, 1024,  64, True]()
+    gemv_test[DType.float64, 1024,  64, False]()
+    gemv_test[DType.float64, 1024,  64, True]()
 
-# def test_ger():
-#     ger_test[DType.float32, 64, 64]()
-#     ger_test[DType.float32, 256, 256]()
-#     ger_test[DType.float64, 64, 64]()
-#     ger_test[DType.float64, 256, 256]()
+def test_ger():
+    ger_test[DType.float32, 64, 64]()
+    ger_test[DType.float32, 256, 256]()
+    ger_test[DType.float64, 64, 64]()
+    ger_test[DType.float64, 256, 256]()
    
-# def test_syr():
-#     syr_test[DType.float32,  256, 1]()
-#     syr_test[DType.float32, 1024, 0]()
-#     syr_test[DType.float64,  256, 0]()
-#     syr_test[DType.float64, 1024, 1]()
+def test_syr():
+    syr_test[DType.float32,  256, 1]()
+    syr_test[DType.float32, 1024, 0]()
+    syr_test[DType.float64,  256, 0]()
+    syr_test[DType.float64, 1024, 1]()
 
 def test_syr2():
-    syr2_test[DType.float32,  256, 1]()
-    syr2_test[DType.float32, 256, 0]()
-    syr2_test[DType.float64,  256, 0]()
-    syr2_test[DType.float64, 256, 1]()
+    syr2_test[DType.float32,  512, 1]()
+    syr2_test[DType.float32, 512, 0]()
+    syr2_test[DType.float64,  512, 0]()
+    syr2_test[DType.float64, 512, 1]()
 
 def main():
     print("--- MojoBLAS Level 2 routines testing ---")
