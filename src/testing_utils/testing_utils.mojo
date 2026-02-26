@@ -73,3 +73,57 @@ fn frobenius_norm[dtype: DType](
     for i in range(n):
         sum += a[i] * a[i]
     return sqrt(sum)
+
+fn check_syr_error[dtype: DType](
+    n: Int,
+    alpha: Scalar[dtype],
+    x_norm: Scalar[dtype],
+    y_norm: Scalar[dtype],
+    A_ini_norm: Scalar[dtype],
+    error_norm: Scalar[dtype]
+) -> Bool:
+
+    var alpha_ = max(abs(alpha), Scalar[dtype](1))
+
+    var denom =
+        Scalar[dtype](2) * alpha_ * x_norm * y_norm +
+        Scalar[dtype](2) * A_ini_norm
+
+    if denom == Scalar[dtype](0):
+        return error_norm == Scalar[dtype](0)
+
+    var err = error_norm / denom
+
+    @parameter
+    if dtype == DType.float32:
+        return err < Scalar[dtype](tol32)
+    else:
+        return err < Scalar[dtype](tol64)
+
+fn frobenius_norm_symmetric[dtype: DType](
+    C: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+    n: Int,
+    ldc: Int,
+    lower: Int # 0 = upper triangle, 1 = lower triangle
+) -> Scalar[dtype]:
+
+    var sum = Scalar[dtype](0)
+
+    if lower == 1:
+        for j in range(n):
+            for i in range(j, n):
+                var val = C[i + j*ldc]
+                if i == j:
+                    sum += val * val
+                else:
+                    sum += Scalar[dtype](2) * val * val
+    else:
+        for j in range(n):
+            for i in range(j+1):
+                var val = C[i + j*ldc]
+                if i == j:
+                    sum += val * val
+                else:
+                    sum += Scalar[dtype](2) * val * val
+
+    return sqrt(sum)
