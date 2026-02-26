@@ -249,7 +249,7 @@ def syr2_test[
 
         var alpha = generate_random_scalar[dtype](-100, 100)
 
-        var norm_A = frobenius_norm[dtype](A.unsafe_ptr(), n * n)
+        var norm_A = frobenius_norm_symmetric[dtype](A.unsafe_ptr(), n, n, uplo)
         var norm_x = frobenius_norm[dtype](x.unsafe_ptr(), n)
         var norm_y = frobenius_norm[dtype](y.unsafe_ptr(), n)
 
@@ -302,9 +302,11 @@ def syr2_test[
             for i in range(n * n):
                 error[i] = res_mojo[i] - Scalar[dtype](py=sp_flat[i])
 
-            var error_norm = frobenius_norm[dtype](
+            var error_norm = frobenius_norm_symmetric[dtype](
                 error.unsafe_ptr(),
-                n*n
+                n,
+                n,
+                uplo
             )
 
             var passed = check_syr_error[dtype](
