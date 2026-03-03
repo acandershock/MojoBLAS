@@ -5,9 +5,9 @@ comptime tol32: Float32 = 1e-8
 comptime tol64: Float64 = 1e-16
 
 def generate_random_arr[
-    dtype: DType,
-    size:  Int
+    dtype: DType
 ](
+    size:  Int,
     a:   UnsafePointer[Scalar[dtype], MutAnyOrigin],
     min_value: Scalar[dtype],
     max_value: Scalar[dtype]

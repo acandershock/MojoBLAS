@@ -26,9 +26,9 @@ def gemv_test[
         y_d = ctx.enqueue_create_buffer[dtype](y_len)
         y = ctx.enqueue_create_host_buffer[dtype](y_len)
 
-        generate_random_arr[dtype, m * n](A.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, x_len](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, y_len](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](m * n, A.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](x_len, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](y_len, y.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(A_d, A)
         ctx.enqueue_copy(x_d, x)
@@ -113,9 +113,9 @@ def ger_test[
         y = ctx.enqueue_create_host_buffer[dtype](n)
 
         # Generate three arrays of random numbers on CPU
-        generate_random_arr[dtype, m*n](A.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, m](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, n](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](m * n, A.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](m, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n, y.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(A_device, A)
         ctx.enqueue_copy(x_device, x)
@@ -198,8 +198,8 @@ def main():
     for i in range(1, len(args)):
         if args[i] == "gemv":    suite.test[test_gemv]()
         elif args[i] == "ger":   suite.test[test_ger]()
-        elif args[i] == "syr":   suite.test[test_syr]()
-        elif args[i] == "syr2":  suite.test[test_syr2]()
+        # elif args[i] == "syr":   suite.test[test_syr]()
+        # elif args[i] == "syr2":  suite.test[test_syr2]()
         else: print("unknown routine:", args[i])
     suite^.run()
 

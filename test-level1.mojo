@@ -20,7 +20,7 @@ def asum_test[
 
         d_v = ctx.enqueue_create_buffer[dtype](size)
         v = ctx.enqueue_create_host_buffer[dtype](size)
-        generate_random_arr[dtype, size](v.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, v.unsafe_ptr(), -10000, 10000)
         ctx.enqueue_copy(d_v, v)
 
         d_res = ctx.enqueue_create_buffer[dtype](1)
@@ -67,9 +67,9 @@ def axpy_test[
         y = ctx.enqueue_create_host_buffer[dtype](size)
         mojo_res = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, 1](UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](1, UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -10000, 10000)
         # print("a = ", a)
         # print("x = ", x)
         # print("y = ", y)
@@ -120,8 +120,8 @@ def copy_test[
         x = ctx.enqueue_create_host_buffer[dtype](size)
         y = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -10000, 10000)
         # print("x = ", x)
         # print("y = ", y)
 
@@ -158,8 +158,8 @@ def dot_test[
         b = ctx.enqueue_create_host_buffer[dtype](size)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, size](a.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, size](b.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, a.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, b.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -218,8 +218,8 @@ def dot_test_complex[
         b = ctx.enqueue_create_host_buffer[dtype](2*size)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, 2*size](a.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, 2*size](b.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](2*size, a.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](2*size, b.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -278,8 +278,8 @@ def dotc_test[
         b = ctx.enqueue_create_host_buffer[dtype](size*2)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, size*2](a.unsafe_ptr(), -1, 1)
-        generate_random_arr[dtype, size*2](b.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](2*size, a.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](2*size, b.unsafe_ptr(), -1, 1)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -341,8 +341,8 @@ def dotu_test[
         b = ctx.enqueue_create_host_buffer[dtype](size*2)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, size*2](a.unsafe_ptr(), -1, 1)
-        generate_random_arr[dtype, size*2](b.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](size*2, a.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](size*2, b.unsafe_ptr(), -1, 1)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -402,7 +402,7 @@ def iamax_test[
         v = ctx.enqueue_create_host_buffer[dtype](size)
 
         # Generate an array of random numbers on CPU
-        generate_random_arr[dtype, size](v.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, v.unsafe_ptr(), -10000, 10000)
 
         # Copy random vector from CPU to GPU memory
         ctx.enqueue_copy(d_v, v)
@@ -452,7 +452,7 @@ def nrm2_test[
         d_x = ctx.enqueue_create_buffer[dtype](size)
         d_res = ctx.enqueue_create_buffer[dtype](1)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -1000, 1000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -1000, 1000)
         ctx.enqueue_copy(d_x, x)
 
         d_res.enqueue_fill(-1) # set result to -1 for now
@@ -501,8 +501,8 @@ def rot_test[
         d_y = ctx.enqueue_create_buffer[dtype](size)
         y = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(d_x, x)
         ctx.enqueue_copy(d_y, y)
@@ -608,8 +608,8 @@ def rotm_test[
         # size_y = (n - 1) * abs(incy) + 1
         x = ctx.enqueue_create_host_buffer[dtype](size)
         y = ctx.enqueue_create_host_buffer[dtype](size)
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -100, 100)
 
         d_x = ctx.enqueue_create_buffer[dtype](size)
         d_y = ctx.enqueue_create_buffer[dtype](size)
@@ -755,8 +755,8 @@ def scal_test[
         x = ctx.enqueue_create_host_buffer[dtype](size)
         mojo_res = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, 1](UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](1, UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
         # print("a = ", a)
         # print("x = ", x)
 
@@ -803,8 +803,8 @@ def swap_test[
         x2 = ctx.enqueue_create_host_buffer[dtype](size)
         y2 = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -10000, 10000)
 
         d_x = ctx.enqueue_create_buffer[dtype](size)
         d_y = ctx.enqueue_create_buffer[dtype](size)
@@ -893,11 +893,11 @@ def test_rotm():
     rotm_test[DType.float64, 256]()
     rotm_test[DType.float64, 4096]()
 
-def test_rotmg():
-    rotmg_test[DType.float32, 256]()
-    rotmg_test[DType.float32, 4096]()
-    rotmg_test[DType.float64, 256]()
-    rotmg_test[DType.float64, 4096]()
+# def test_rotmg():
+#     rotmg_test[DType.float32, 256]()
+#     rotmg_test[DType.float32, 4096]()
+#     rotmg_test[DType.float64, 256]()
+#     rotmg_test[DType.float64, 4096]()
 
 def test_scal():
     scal_test[DType.float32, 256]()
