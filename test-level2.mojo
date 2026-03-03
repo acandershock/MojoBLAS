@@ -197,7 +197,9 @@ def main():
     var suite = TestSuite(cli_args=List[StaticString]())
     for i in range(1, len(args)):
         if args[i] == "gemv":    suite.test[test_gemv]()
-        elif args[i] == "ger":  suite.test[test_ger]()
+        elif args[i] == "ger":   suite.test[test_ger]()
+        elif args[i] == "syr":   suite.test[test_syr]()
+        elif args[i] == "syr2":  suite.test[test_syr2]()
         else: print("unknown routine:", args[i])
     suite^.run()
 
