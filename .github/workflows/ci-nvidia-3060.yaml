@@ -10,5 +10,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
       - run: pixi run mojo test-level1.mojo
       - run: pixi run mojo test-level2.mojo
