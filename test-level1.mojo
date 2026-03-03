@@ -1,3 +1,4 @@
+from sys import argv
 from testing import assert_equal, assert_almost_equal, TestSuite
 from gpu.host import DeviceContext
 from math import sqrt
@@ -912,4 +913,26 @@ def test_swap():
 
 def main():
     print("--- MojoBLAS Level 1 routines testing ---")
-    TestSuite.discover_tests[__functions_in_module()]().run()
+    var args = argv()
+    if (len(args) < 2):
+        TestSuite.discover_tests[__functions_in_module()]().run()
+        return
+
+    var suite = TestSuite(cli_args=List[StaticString]())
+    for i in range(1, len(args)):
+        if args[i] == "asum":    suite.test[test_asum]()
+        elif args[i] == "axpy":  suite.test[test_axpy]()
+        elif args[i] == "copy":  suite.test[test_copy]()
+        elif args[i] == "dot":   suite.test[test_dot]()
+        elif args[i] == "dotc":  suite.test[test_dotc]()
+        elif args[i] == "dotu":  suite.test[test_dotu]()
+        elif args[i] == "iamax": suite.test[test_iamax]()
+        elif args[i] == "nrm2":  suite.test[test_nrm2]()
+        elif args[i] == "rot":   suite.test[test_rot]()
+        elif args[i] == "rotg":  suite.test[test_rotg]()
+        elif args[i] == "rotm":  suite.test[test_rotm]()
+        elif args[i] == "rotmg": suite.test[test_rotmg]()
+        elif args[i] == "scal":  suite.test[test_scal]()
+        elif args[i] == "swap":  suite.test[test_swap]()
+        else: print("unknown routine:", args[i])
+    suite^.run()

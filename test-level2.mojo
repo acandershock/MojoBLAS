@@ -1,3 +1,4 @@
+from sys import argv
 from testing import assert_equal, assert_almost_equal, assert_true, TestSuite
 from gpu.host import DeviceContext
 
@@ -188,4 +189,15 @@ def test_ger():
 
 def main():
     print("--- MojoBLAS Level 2 routines testing ---")
-    TestSuite.discover_tests[__functions_in_module()]().run()
+    var args = argv()
+    if (len(args) < 2):
+        TestSuite.discover_tests[__functions_in_module()]().run()
+        return
+
+    var suite = TestSuite(cli_args=List[StaticString]())
+    for i in range(1, len(args)):
+        if args[i] == "gemv":    suite.test[test_gemv]()
+        elif args[i] == "ger":  suite.test[test_ger]()
+        else: print("unknown routine:", args[i])
+    suite^.run()
+
