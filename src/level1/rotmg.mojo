@@ -3,7 +3,7 @@ fn blas_rotmg[dtype: DType](
     d2: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     x1: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     y1: UnsafePointer[Scalar[dtype], MutAnyOrigin],
-    param: UnsafePointer[SIMD[dtype, 5], MutAnyOrigin]
+    mut param: List[Scalar[dtype]]
 ):
 
     var flag: Scalar[dtype]
@@ -130,7 +130,7 @@ fn blas_rotmg[dtype: DType](
                     h21 /= gam
                     h22 /= gam
                 else:
-                    d2[] *= gam**2
+                    d2[] /= gam**2
                     h21 *= gam
                     h22 *= gam
 

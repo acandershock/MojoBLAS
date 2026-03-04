@@ -700,7 +700,7 @@ def rotmg_test[
     var d2 = generate_random_scalar[dtype](1, 10000)
     var x1 = generate_random_scalar[dtype](-10000, 10000)
     var y1 = generate_random_scalar[dtype](-10000, 10000)
-    var param = SIMD[dtype, 5]()
+    var param = List[Scalar[dtype]](length=5, fill=0.0)
 
     # Launch Mojo BLAS kernel
     blas_rotmg[dtype](
@@ -708,7 +708,7 @@ def rotmg_test[
         UnsafePointer(to=d2),
         UnsafePointer(to=x1),
         UnsafePointer(to=y1),
-        UnsafePointer(to=param),
+        param
     )
 
     # Import SciPy and numpy
@@ -724,6 +724,13 @@ def rotmg_test[
     else:
         print(dtype , " is not supported by SciPy")
         return
+
+    # print(d1)
+    # print(d2)
+    # print(x1)
+    # print(y1)
+    # print(param)
+    # print(py_p)
 
     # Only compare param
     for i in range(5):
@@ -880,11 +887,11 @@ def test_rotm():
     rotm_test[DType.float64, 256]()
     rotm_test[DType.float64, 4096]()
 
-# def test_rotmg():
-#     rotmg_test[DType.float32, 256]()
-#     rotmg_test[DType.float32, 4096]()
-#     rotmg_test[DType.float64, 256]()
-#     rotmg_test[DType.float64, 4096]()
+def test_rotmg():
+    rotmg_test[DType.float32, 256]()
+    rotmg_test[DType.float32, 4096]()
+    rotmg_test[DType.float64, 256]()
+    rotmg_test[DType.float64, 4096]()
 
 def test_scal():
     scal_test[DType.float32, 256]()
