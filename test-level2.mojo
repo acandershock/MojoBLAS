@@ -456,13 +456,13 @@ def test_syr2():
     syr2_test[DType.float64, 512, 1]()
 
 def test_gbmv():
-    gbmv_test[DType.float32,  64,  64, 1, 1, False]()
+    gbmv_test[DType.float32,  64,  64, 1, 2, False]()
     gbmv_test[DType.float32,  64,  64, 2, 2, True]()
-    gbmv_test[DType.float64,  64,  64, 1, 1, False]()
+    gbmv_test[DType.float64,  64,  64, 1, 2, False]()
     gbmv_test[DType.float64,  64,  64, 2, 2, True]()
-    gbmv_test[DType.float32, 512,  64, 1, 1, False]()
+    gbmv_test[DType.float32, 512,  64, 1, 2, False]()
     gbmv_test[DType.float32, 512,  64, 2, 2, True]()
-    gbmv_test[DType.float64, 512,  64, 1, 1, False]()
+    gbmv_test[DType.float64, 512,  64, 1, 2, False]()
     gbmv_test[DType.float64, 512,  64, 2, 2, True]()
 
 def main():

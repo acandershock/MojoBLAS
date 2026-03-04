@@ -36,7 +36,7 @@ fn sgbmv_device(
             var j_end   = (i + ku) if (i + ku < n-1) else n-1
 
             for j in range(j_start, j_end+1):
-                var band_col = ku + j - i
+                var band_col = kl + j - i
                 sum += A[i * lda + band_col] * x[j * incx]
 
             y[i * incy] = alpha * sum + beta * y[i * incy]
@@ -50,7 +50,7 @@ fn sgbmv_device(
             var i_end   = (j + kl) if (j + kl < m-1) else m-1
 
             for i in range(i_start, i_end+1):
-                var band_col = ku + j - i
+                var band_col = kl + j - i
                 sum += A[i * lda + band_col] * x[i * incx]
 
             y[j * incy] = alpha * sum + beta * y[j * incy]
@@ -83,7 +83,7 @@ fn dgbmv_device(
             var j_end   = (i + ku) if (i + ku < n-1) else n-1
 
             for j in range(j_start, j_end+1):
-                var band_col = ku + j - i
+                var band_col = kl + j - i
                 sum += A[i * lda + band_col] * x[j * incx]
 
             y[i * incy] = alpha * sum + beta * y[i * incy]
@@ -97,7 +97,7 @@ fn dgbmv_device(
             var i_end   = (j + kl) if (j + kl < m-1) else m-1
 
             for i in range(i_start, i_end+1):
-                var band_col = ku + j - i
+                var band_col = kl + j - i
                 sum += A[i * lda + band_col] * x[i * incx]
 
             y[j * incy] = alpha * sum + beta * y[j * incy]
