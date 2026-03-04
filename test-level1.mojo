@@ -1,3 +1,4 @@
+from sys import argv
 from testing import assert_equal, assert_almost_equal, TestSuite
 from gpu.host import DeviceContext
 from math import sqrt
@@ -19,7 +20,7 @@ def asum_test[
 
         d_v = ctx.enqueue_create_buffer[dtype](size)
         v = ctx.enqueue_create_host_buffer[dtype](size)
-        generate_random_arr[dtype, size](v.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, v.unsafe_ptr(), -10000, 10000)
         ctx.enqueue_copy(d_v, v)
 
         d_res = ctx.enqueue_create_buffer[dtype](1)
@@ -66,9 +67,9 @@ def axpy_test[
         y = ctx.enqueue_create_host_buffer[dtype](size)
         mojo_res = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, 1](UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](1, UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -10000, 10000)
         # print("a = ", a)
         # print("x = ", x)
         # print("y = ", y)
@@ -119,8 +120,8 @@ def copy_test[
         x = ctx.enqueue_create_host_buffer[dtype](size)
         y = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -10000, 10000)
         # print("x = ", x)
         # print("y = ", y)
 
@@ -157,8 +158,8 @@ def dot_test[
         b = ctx.enqueue_create_host_buffer[dtype](size)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, size](a.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, size](b.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, a.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, b.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -217,8 +218,8 @@ def dot_test_complex[
         b = ctx.enqueue_create_host_buffer[dtype](2*size)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, 2*size](a.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, 2*size](b.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](2*size, a.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](2*size, b.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -277,8 +278,8 @@ def dotc_test[
         b = ctx.enqueue_create_host_buffer[dtype](size*2)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, size*2](a.unsafe_ptr(), -1, 1)
-        generate_random_arr[dtype, size*2](b.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](2*size, a.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](2*size, b.unsafe_ptr(), -1, 1)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -340,8 +341,8 @@ def dotu_test[
         b = ctx.enqueue_create_host_buffer[dtype](size*2)
 
         # Generate two arrays of random numbers on CPU
-        generate_random_arr[dtype, size*2](a.unsafe_ptr(), -1, 1)
-        generate_random_arr[dtype, size*2](b.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](size*2, a.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](size*2, b.unsafe_ptr(), -1, 1)
 
         ctx.enqueue_copy(a_device, a)
         ctx.enqueue_copy(b_device, b)
@@ -401,7 +402,7 @@ def iamax_test[
         v = ctx.enqueue_create_host_buffer[dtype](size)
 
         # Generate an array of random numbers on CPU
-        generate_random_arr[dtype, size](v.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, v.unsafe_ptr(), -10000, 10000)
 
         # Copy random vector from CPU to GPU memory
         ctx.enqueue_copy(d_v, v)
@@ -451,7 +452,7 @@ def nrm2_test[
         d_x = ctx.enqueue_create_buffer[dtype](size)
         d_res = ctx.enqueue_create_buffer[dtype](1)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -1000, 1000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -1000, 1000)
         ctx.enqueue_copy(d_x, x)
 
         d_res.enqueue_fill(-1) # set result to -1 for now
@@ -500,8 +501,8 @@ def rot_test[
         d_y = ctx.enqueue_create_buffer[dtype](size)
         y = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(d_x, x)
         ctx.enqueue_copy(d_y, y)
@@ -607,8 +608,8 @@ def rotm_test[
         # size_y = (n - 1) * abs(incy) + 1
         x = ctx.enqueue_create_host_buffer[dtype](size)
         y = ctx.enqueue_create_host_buffer[dtype](size)
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -100, 100)
 
         d_x = ctx.enqueue_create_buffer[dtype](size)
         d_y = ctx.enqueue_create_buffer[dtype](size)
@@ -690,57 +691,57 @@ def rotm_test[
                     assert_almost_equal(y_result[i], expected_y, atol=atol)
 
 
-def rotmg_test[
-    dtype: DType,
-    size: Int
-]():
-    with DeviceContext() as ctx:
-        # d1 and d2 must be positive
-        var d1 = generate_random_scalar[dtype](1, 10000)
-        var d2 = generate_random_scalar[dtype](1, 10000)
-        var x1 = generate_random_scalar[dtype](-10000, 10000)
-        var y1 = generate_random_scalar[dtype](-10000, 10000)
+# def rotmg_test[
+#     dtype: DType,
+#     size: Int
+# ]():
+#     with DeviceContext() as ctx:
+#         # d1 and d2 must be positive
+#         var d1 = generate_random_scalar[dtype](1, 10000)
+#         var d2 = generate_random_scalar[dtype](1, 10000)
+#         var x1 = generate_random_scalar[dtype](-10000, 10000)
+#         var y1 = generate_random_scalar[dtype](-10000, 10000)
 
-        d_d1 = ctx.enqueue_create_buffer[dtype](1)
-        d_d1.enqueue_fill(d1)
-        d_d2 = ctx.enqueue_create_buffer[dtype](1)
-        d_d2.enqueue_fill(d2)
-        d_x1 = ctx.enqueue_create_buffer[dtype](1)
-        d_x1.enqueue_fill(x1)
-        d_y1 = ctx.enqueue_create_buffer[dtype](1)
-        d_y1.enqueue_fill(y1)
-        d_param = ctx.enqueue_create_buffer[dtype](5)
+#         d_d1 = ctx.enqueue_create_buffer[dtype](1)
+#         d_d1.enqueue_fill(d1)
+#         d_d2 = ctx.enqueue_create_buffer[dtype](1)
+#         d_d2.enqueue_fill(d2)
+#         d_x1 = ctx.enqueue_create_buffer[dtype](1)
+#         d_x1.enqueue_fill(x1)
+#         d_y1 = ctx.enqueue_create_buffer[dtype](1)
+#         d_y1.enqueue_fill(y1)
+#         d_param = ctx.enqueue_create_buffer[dtype](5)
 
-        # Launch Mojo BLAS kernel
-        # NOTE: not implemented
-        # blas_rotmg[dtype](
-        #     d1.unsafe_ptr(),
-        #     d2.unsafe_ptr(),
-        #     x1.unsafe_ptr(),
-        #     x2.unsafe_ptr(),
-        #     d_param.unsafe_ptr(),
-        #     ctx
-        # )
+#         # Launch Mojo BLAS kernel
+#         # NOTE: not implemented
+#         # blas_rotmg[dtype](
+#         #     d1.unsafe_ptr(),
+#         #     d2.unsafe_ptr(),
+#         #     x1.unsafe_ptr(),
+#         #     x2.unsafe_ptr(),
+#         #     d_param.unsafe_ptr(),
+#         #     ctx
+#         # )
 
-        # Import SciPy and numpy
-        sp = Python.import_module("scipy")
-        np = Python.import_module("numpy")
-        sp_blas = sp.linalg.blas
+#         # Import SciPy and numpy
+#         sp = Python.import_module("scipy")
+#         np = Python.import_module("numpy")
+#         sp_blas = sp.linalg.blas
 
-        # srotmg - float32, drotmg - float64
-        if dtype == DType.float32:
-            py_p = sp_blas.srotmg(d1, d2, x1, y1)
-        elif dtype == DType.float64:
-            py_p = sp_blas.drotmg(d1, d2, x1, y1)
-        else:
-            print(dtype , " is not supported by SciPy")
-            return
+#         # srotmg - float32, drotmg - float64
+#         if dtype == DType.float32:
+#             py_p = sp_blas.srotmg(d1, d2, x1, y1)
+#         elif dtype == DType.float64:
+#             py_p = sp_blas.drotmg(d1, d2, x1, y1)
+#         else:
+#             print(dtype , " is not supported by SciPy")
+#             return
 
-        # Only compare param
-        with d_param.map_to_host() as mojo_param:
-            for i in range(5):
-                var py_ref = Scalar[dtype](py=py_p[i])
-                assert_equal(mojo_param[i], py_ref)
+#         # Only compare param
+#         with d_param.map_to_host() as mojo_param:
+#             for i in range(5):
+#                 var py_ref = Scalar[dtype](py=py_p[i])
+#                 assert_equal(mojo_param[i], py_ref)
 
 
 def scal_test[
@@ -754,8 +755,8 @@ def scal_test[
         x = ctx.enqueue_create_host_buffer[dtype](size)
         mojo_res = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, 1](UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](1, UnsafePointer[SIMD[dtype, 1]](to=a), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
         # print("a = ", a)
         # print("x = ", x)
 
@@ -802,8 +803,8 @@ def swap_test[
         x2 = ctx.enqueue_create_host_buffer[dtype](size)
         y2 = ctx.enqueue_create_host_buffer[dtype](size)
 
-        generate_random_arr[dtype, size](x.unsafe_ptr(), -10000, 10000)
-        generate_random_arr[dtype, size](y.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, x.unsafe_ptr(), -10000, 10000)
+        generate_random_arr[dtype](size, y.unsafe_ptr(), -10000, 10000)
 
         d_x = ctx.enqueue_create_buffer[dtype](size)
         d_y = ctx.enqueue_create_buffer[dtype](size)
@@ -912,4 +913,26 @@ def test_swap():
 
 def main():
     print("--- MojoBLAS Level 1 routines testing ---")
-    TestSuite.discover_tests[__functions_in_module()]().run()
+    var args = argv()
+    if (len(args) < 2):
+        TestSuite.discover_tests[__functions_in_module()]().run()
+        return
+
+    var suite = TestSuite(cli_args=List[StaticString]())
+    for i in range(1, len(args)):
+        if args[i] == "asum":    suite.test[test_asum]()
+        elif args[i] == "axpy":  suite.test[test_axpy]()
+        elif args[i] == "copy":  suite.test[test_copy]()
+        elif args[i] == "dot":   suite.test[test_dot]()
+        elif args[i] == "dotc":  suite.test[test_dotc]()
+        elif args[i] == "dotu":  suite.test[test_dotu]()
+        elif args[i] == "iamax": suite.test[test_iamax]()
+        elif args[i] == "nrm2":  suite.test[test_nrm2]()
+        elif args[i] == "rot":   suite.test[test_rot]()
+        elif args[i] == "rotg":  suite.test[test_rotg]()
+        elif args[i] == "rotm":  suite.test[test_rotm]()
+        # elif args[i] == "rotmg": suite.test[test_rotmg]()
+        elif args[i] == "scal":  suite.test[test_scal]()
+        elif args[i] == "swap":  suite.test[test_swap]()
+        else: print("unknown routine:", args[i])
+    suite^.run()

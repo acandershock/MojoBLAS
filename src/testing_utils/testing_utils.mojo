@@ -4,9 +4,9 @@ from math import sqrt
 from python import Python
 
 def generate_random_arr[
-    dtype: DType,
-    size:  Int
+    dtype: DType
 ](
+    size:  Int,
     a:   UnsafePointer[Scalar[dtype], MutAnyOrigin],
     min_value: Scalar[dtype],
     max_value: Scalar[dtype]
