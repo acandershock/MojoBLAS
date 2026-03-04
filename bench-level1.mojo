@@ -73,6 +73,11 @@ def parse_args(mut params: RunParams) -> Bool:
         params.sizes.append(8388608)
         params.sizes.append(16777216)
 
+    if len(params.routines) == 0:
+        # TODO: add rotm, rotmg
+        params.routines = ["asum", "axpy", "copy", "dot", "dotc",
+                           "dotu", "iamax", "nrm2", "rot", "rotg", "scal", "swap"]
+
     return True
 
 
