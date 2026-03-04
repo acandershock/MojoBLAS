@@ -134,3 +134,24 @@ fn frobenius_norm_symmetric[dtype: DType](
 
 
     return sqrt(sum)
+
+fn dense_to_band[dtype: DType](
+    A: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+    B: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+    m: Int,
+    n: Int,
+    kl: Int,
+    ku: Int
+):
+    band_width = kl + ku + 1
+
+    for i in range(m):
+        for j in range(band_width):
+            B[i * band_width + j] = 0.0
+
+        for j in range(n):
+            if j >= i - kl and j <= i + ku:
+                band_col = j - (i - kl)
+                B[i * band_width + band_col] = A[i * n + j]
+            else:
+                A[i * n + j] = Scalar[dtype](0)

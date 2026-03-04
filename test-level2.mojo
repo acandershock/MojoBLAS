@@ -320,6 +320,112 @@ def syr2_test[
 
             assert_true(passed)
 
+def gbmv_test[
+    dtype: DType,
+    m: Int,
+    n: Int,
+    kl: Int,
+    ku: Int,
+    trans: Bool,
+]():
+    comptime x_len = n if not trans else m
+    comptime y_len = m if not trans else n
+    comptime lda = kl + ku + 1
+
+    with DeviceContext() as ctx:
+        # Dense host matrix (for reference + band extraction)
+        A_dense = ctx.enqueue_create_host_buffer[dtype](m * n)
+
+        # Band storage
+        A_band = ctx.enqueue_create_host_buffer[dtype](lda * m)
+        A_d = ctx.enqueue_create_buffer[dtype](lda * m)
+
+        x = ctx.enqueue_create_host_buffer[dtype](x_len)
+        x_d = ctx.enqueue_create_buffer[dtype](x_len)
+
+        y = ctx.enqueue_create_host_buffer[dtype](y_len)
+        y_d = ctx.enqueue_create_buffer[dtype](y_len)
+
+        generate_random_arr[dtype, m * n](A_dense.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype, x_len](x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype, y_len](y.unsafe_ptr(), -100, 100)
+
+        dense_to_band(A_dense.unsafe_ptr(), A_band.unsafe_ptr(), m, n, kl, ku)
+
+        ctx.enqueue_copy(A_d, A_band)
+        ctx.enqueue_copy(x_d, x)
+        ctx.enqueue_copy(y_d, y)
+        ctx.synchronize()
+
+        var alpha = generate_random_scalar[dtype](-100, 100)
+        var beta  = generate_random_scalar[dtype](-100, 100)
+
+        var norm_A = frobenius_norm[dtype](A_dense.unsafe_ptr(), m * n)
+        var norm_x = frobenius_norm[dtype](x.unsafe_ptr(), x_len)
+        var norm_y = frobenius_norm[dtype](y.unsafe_ptr(), y_len)
+
+        blas_gbmv[dtype](
+            trans,
+            m, n,
+            kl, ku,
+            alpha,
+            A_d.unsafe_ptr(), lda,
+            x_d.unsafe_ptr(), 1,
+            beta,
+            y_d.unsafe_ptr(), 1,
+            ctx,
+        )
+
+        # Python reference
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_A = Python.list()
+        py_x = Python.list()
+        py_y = Python.list()
+
+        for i in range(m * n):
+            py_A.append(A_dense[i])
+        for i in range(x_len):
+            py_x.append(x[i])
+        for i in range(y_len):
+            py_y.append(y[i])
+
+        var sp_res: PythonObject
+
+        if dtype == DType.float32:
+            np_A = np.array(py_A, dtype=np.float32).reshape(m, n)
+            np_x = np.array(py_x, dtype=np.float32)
+            np_y = np.array(py_y, dtype=np.float32)
+
+            sp_res = sp_blas.sgemv(alpha, np_A, np_x, beta=beta, y=np_y, trans=1 if trans else 0)
+
+        elif dtype == DType.float64:
+            np_A = np.array(py_A, dtype=np.float64).reshape(m, n)
+            np_x = np.array(py_x, dtype=np.float64)
+            np_y = np.array(py_y, dtype=np.float64)
+
+            sp_res = sp_blas.dgemv(alpha, np_A, np_x, beta=beta, y=np_y, trans=1 if trans else 0)
+        else:
+            print("Unsupported type")
+            return
+
+        with y_d.map_to_host() as res_mojo:
+            var norm_diff = Scalar[dtype](0)
+            for i in range(y_len):
+                var diff = res_mojo[i] - Scalar[dtype](py=sp_res[i])
+
+                norm_diff += diff * diff
+            norm_diff = sqrt(norm_diff)
+
+            var ok = check_gemm_error[dtype](
+                1, y_len, x_len,
+                alpha, beta,
+                norm_A, norm_x, norm_y,
+                norm_diff
+            )
+            assert_true(ok)
 
 def test_gemv():
     gemv_test[DType.float32,  64,  64, False]()
@@ -348,6 +454,16 @@ def test_syr2():
     syr2_test[DType.float32, 512, 0]()
     syr2_test[DType.float64,  512, 0]()
     syr2_test[DType.float64, 512, 1]()
+
+def test_gbmv():
+    gbmv_test[DType.float32,  64,  64, 1, 2, False]()
+    gbmv_test[DType.float32,  64,  64, 2, 2, True]()
+    gbmv_test[DType.float64,  64,  64, 1, 2, False]()
+    gbmv_test[DType.float64,  64,  64, 2, 2, True]()
+    gbmv_test[DType.float32, 512,  64, 1, 2, False]()
+    gbmv_test[DType.float32, 512,  64, 2, 2, True]()
+    gbmv_test[DType.float64, 512,  64, 1, 2, False]()
+    gbmv_test[DType.float64, 512,  64, 2, 2, True]()
 
 def main():
     print("--- MojoBLAS Level 2 routines testing ---")
