@@ -170,7 +170,7 @@ def ger_test[
                 for j in range(n):
                     assert_almost_equal(Scalar[dtype](py=sp_res[i][j]), res_mojo[(i*n)+j], atol=atol)
 
-                    
+
 def syr_test[
     dtype: DType,
     n: Int,
@@ -182,8 +182,8 @@ def syr_test[
         x_d = ctx.enqueue_create_buffer[dtype](n)
         x = ctx.enqueue_create_host_buffer[dtype](n)
 
-        generate_random_arr[dtype, n * n](A.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, n](x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n * n, A.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(A_d, A)
         ctx.enqueue_copy(x_d, x)
@@ -192,12 +192,12 @@ def syr_test[
         var alpha = generate_random_scalar[dtype](-100, 100)
 
         blas_syr[dtype](uplo, n, alpha, x_d.unsafe_ptr(), 1, A_d.unsafe_ptr(), n, ctx)
-        
+
         # Import SciPy and numpy
         sp = Python.import_module("scipy")
         np = Python.import_module("numpy")
         sp_blas = sp.linalg.blas
-        
+
         py_A = Python.list()
         py_x = Python.list()
         for i in range(n * n):
@@ -217,7 +217,7 @@ def syr_test[
         else:
             print("Unsupported type: ", dtype)
             return
-           
+
         # NOTE: Error('only 0-dimensional arrays can be converted to Python scalars')
         sp_flat = sp_res.flatten()
         with A_d.map_to_host() as res_mojo:
@@ -239,9 +239,9 @@ def syr2_test[
         y_d = ctx.enqueue_create_buffer[dtype](n)
         y = ctx.enqueue_create_host_buffer[dtype](n)
 
-        generate_random_arr[dtype, n * n](A.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, n](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, n](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n * n, A.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n, y.unsafe_ptr(), -100, 100)
 
         ctx.enqueue_copy(A_d, A)
         ctx.enqueue_copy(x_d, x)
@@ -347,9 +347,9 @@ def gbmv_test[
         y = ctx.enqueue_create_host_buffer[dtype](y_len)
         y_d = ctx.enqueue_create_buffer[dtype](y_len)
 
-        generate_random_arr[dtype, m * n](A_dense.unsafe_ptr(), -1, 1)
-        generate_random_arr[dtype, x_len](x.unsafe_ptr(), -100, 100)
-        generate_random_arr[dtype, y_len](y.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](m * n, A_dense.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](x_len, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](y_len, y.unsafe_ptr(), -100, 100)
 
         dense_to_band(A_dense.unsafe_ptr(), A_band.unsafe_ptr(), m, n, kl, ku)
 
@@ -443,7 +443,7 @@ def test_ger():
     ger_test[DType.float32, 256, 256]()
     ger_test[DType.float64, 64, 64]()
     ger_test[DType.float64, 256, 256]()
-   
+
 def test_syr():
     syr_test[DType.float32,  256, 1]()
     syr_test[DType.float32, 1024, 0]()
