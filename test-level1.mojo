@@ -702,6 +702,11 @@ def rotmg_test[
     var y1 = generate_random_scalar[dtype](-10000, 10000)
     var param = List[Scalar[dtype]](length=5, fill=0.0)
 
+    # Save initial values before we modify d1, d2, x1 in-place
+    var d1_ini = d1
+    var d2_ini = d2
+    var x1_ini = x1
+
     # Launch Mojo BLAS kernel
     blas_rotmg[dtype](
         UnsafePointer(to=d1),
@@ -718,19 +723,13 @@ def rotmg_test[
 
     # srotmg - float32, drotmg - float64
     if dtype == DType.float32:
-        py_p = sp_blas.srotmg(d1, d2, x1, y1)
+        py_p = sp_blas.srotmg(d1_ini, d2_ini, x1_ini, y1)
     elif dtype == DType.float64:
-        py_p = sp_blas.drotmg(d1, d2, x1, y1)
+        py_p = sp_blas.drotmg(d1_ini, d2_ini, x1_ini, y1)
     else:
         print(dtype , " is not supported by SciPy")
         return
 
-    # print(d1)
-    # print(d2)
-    # print(x1)
-    # print(y1)
-    # print(param)
-    # print(py_p)
 
     # Only compare param
     for i in range(5):
@@ -925,7 +924,7 @@ def main():
         elif args[i] == "rot":   suite.test[test_rot]()
         elif args[i] == "rotg":  suite.test[test_rotg]()
         elif args[i] == "rotm":  suite.test[test_rotm]()
-        # elif args[i] == "rotmg": suite.test[test_rotmg]()
+        elif args[i] == "rotmg": suite.test[test_rotmg]()
         elif args[i] == "scal":  suite.test[test_scal]()
         elif args[i] == "swap":  suite.test[test_swap]()
         else: print("unknown routine:", args[i])
