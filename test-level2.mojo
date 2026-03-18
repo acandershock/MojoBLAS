@@ -443,9 +443,26 @@ def trsv_test[
         generate_random_arr[dtype](n * n, A.unsafe_ptr(), -1, 1)
         generate_random_arr[dtype](n, x.unsafe_ptr(), -1, 1)
 
-        # Make A diagonally dominant to reduce numerical instability
+        # Zero out off-triangle elements to make A strictly triangular
         for i in range(n):
-            A[i * n + i] += 1000
+            for j in range(n):
+                # upper triangular
+                if uplo == 0:
+                    if i > j:
+                        A[i * n + j] = 0
+                # lower triangular
+                else:
+                    if i < j:
+                        A[i * n + j] = 0
+
+        # Handle diagonal based on diag parameter
+        for i in range(n):
+            # unit diagonal
+            if diag == 1:
+                A[i * n + i] = 1
+            # non-unit diagonal: make diagonally dominant to reduce numerical instability
+            else:
+                A[i * n + i] += 1000
 
         ctx.enqueue_copy(A_d, A)
         ctx.enqueue_copy(x_d, x)
