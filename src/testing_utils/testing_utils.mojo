@@ -155,3 +155,52 @@ fn dense_to_band[dtype: DType](
                 B[i * band_width + band_col] = A[i * n + j]
             else:
                 A[i * n + j] = Scalar[dtype](0)
+
+fn dense_to_sym_band[dtype: DType](
+    A_dense: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+    A_band: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+    n: Int,
+    k: Int,
+    upper: Bool,
+):
+    var lda = k + 1
+
+    # zero initialize
+    for i in range(n):
+        for b in range(lda):
+            A_band[i * lda + b] = 0
+
+    if upper:
+        # store A[i,j] for j >= i
+        for i in range(n):
+            var j_end = (i + k) if (i + k < n - 1) else (n - 1)
+            for j in range(i, j_end + 1):
+                var band_col = j - i
+                A_band[i * lda + band_col] = A_dense[i * n + j]
+    else:
+        # store A[i,j] for j <= i
+        for i in range(n):
+            var j_start = (i - k) if (i - k > 0) else 0
+            for j in range(j_start, i + 1):
+                var band_col = i - j
+                A_band[i * lda + band_col] = A_dense[i * n + j]
+
+    # Overwrite original matrix with band reconstruction
+    for i in range(n):
+        for j in range(n):
+            var val = Scalar[dtype](0)
+
+            if upper:
+                if j >= i and j <= i + k:
+                    val = A_band[i * lda + (j - i)]
+                elif i >= j and i <= j + k:
+                    # symmetric mirror
+                    val = A_band[j * lda + (i - j)]
+            else:
+                if j <= i and j >= i - k:
+                    val = A_band[i * lda + (i - j)]
+                elif j >= i and j <= i + k:
+                    # symmetric mirror
+                    val = A_band[j * lda + (j - i)]
+
+            A_dense[i * n + j] = val
