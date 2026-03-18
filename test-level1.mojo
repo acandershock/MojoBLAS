@@ -691,57 +691,50 @@ def rotm_test[
                     assert_almost_equal(y_result[i], expected_y, atol=atol)
 
 
-# def rotmg_test[
-#     dtype: DType,
-#     size: Int
-# ]():
-#     with DeviceContext() as ctx:
-#         # d1 and d2 must be positive
-#         var d1 = generate_random_scalar[dtype](1, 10000)
-#         var d2 = generate_random_scalar[dtype](1, 10000)
-#         var x1 = generate_random_scalar[dtype](-10000, 10000)
-#         var y1 = generate_random_scalar[dtype](-10000, 10000)
+def rotmg_test[
+    dtype: DType,
+    size: Int
+]():
+    # d1 and d2 must be positive
+    var d1 = generate_random_scalar[dtype](1, 10000)
+    var d2 = generate_random_scalar[dtype](1, 10000)
+    var x1 = generate_random_scalar[dtype](-10000, 10000)
+    var y1 = generate_random_scalar[dtype](-10000, 10000)
+    var param = List[Scalar[dtype]](length=5, fill=0.0)
 
-#         d_d1 = ctx.enqueue_create_buffer[dtype](1)
-#         d_d1.enqueue_fill(d1)
-#         d_d2 = ctx.enqueue_create_buffer[dtype](1)
-#         d_d2.enqueue_fill(d2)
-#         d_x1 = ctx.enqueue_create_buffer[dtype](1)
-#         d_x1.enqueue_fill(x1)
-#         d_y1 = ctx.enqueue_create_buffer[dtype](1)
-#         d_y1.enqueue_fill(y1)
-#         d_param = ctx.enqueue_create_buffer[dtype](5)
+    # Save initial values before we modify d1, d2, x1 in-place
+    var d1_ini = d1
+    var d2_ini = d2
+    var x1_ini = x1
 
-#         # Launch Mojo BLAS kernel
-#         # NOTE: not implemented
-#         # blas_rotmg[dtype](
-#         #     d1.unsafe_ptr(),
-#         #     d2.unsafe_ptr(),
-#         #     x1.unsafe_ptr(),
-#         #     x2.unsafe_ptr(),
-#         #     d_param.unsafe_ptr(),
-#         #     ctx
-#         # )
+    # Launch Mojo BLAS kernel
+    blas_rotmg[dtype](
+        UnsafePointer(to=d1),
+        UnsafePointer(to=d2),
+        UnsafePointer(to=x1),
+        UnsafePointer(to=y1),
+        param
+    )
 
-#         # Import SciPy and numpy
-#         sp = Python.import_module("scipy")
-#         np = Python.import_module("numpy")
-#         sp_blas = sp.linalg.blas
+    # Import SciPy and numpy
+    sp = Python.import_module("scipy")
+    np = Python.import_module("numpy")
+    sp_blas = sp.linalg.blas
 
-#         # srotmg - float32, drotmg - float64
-#         if dtype == DType.float32:
-#             py_p = sp_blas.srotmg(d1, d2, x1, y1)
-#         elif dtype == DType.float64:
-#             py_p = sp_blas.drotmg(d1, d2, x1, y1)
-#         else:
-#             print(dtype , " is not supported by SciPy")
-#             return
+    # srotmg - float32, drotmg - float64
+    if dtype == DType.float32:
+        py_p = sp_blas.srotmg(d1_ini, d2_ini, x1_ini, y1)
+    elif dtype == DType.float64:
+        py_p = sp_blas.drotmg(d1_ini, d2_ini, x1_ini, y1)
+    else:
+        print(dtype , " is not supported by SciPy")
+        return
 
-#         # Only compare param
-#         with d_param.map_to_host() as mojo_param:
-#             for i in range(5):
-#                 var py_ref = Scalar[dtype](py=py_p[i])
-#                 assert_equal(mojo_param[i], py_ref)
+
+    # Only compare param
+    for i in range(5):
+        var py_ref = Scalar[dtype](py=py_p[i])
+        assert_equal(param[i], py_ref)
 
 
 def scal_test[
@@ -893,11 +886,11 @@ def test_rotm():
     rotm_test[DType.float64, 256]()
     rotm_test[DType.float64, 4096]()
 
-# def test_rotmg():
-#     rotmg_test[DType.float32, 256]()
-#     rotmg_test[DType.float32, 4096]()
-#     rotmg_test[DType.float64, 256]()
-#     rotmg_test[DType.float64, 4096]()
+def test_rotmg():
+    rotmg_test[DType.float32, 256]()
+    rotmg_test[DType.float32, 4096]()
+    rotmg_test[DType.float64, 256]()
+    rotmg_test[DType.float64, 4096]()
 
 def test_scal():
     scal_test[DType.float32, 256]()
@@ -931,7 +924,7 @@ def main():
         elif args[i] == "rot":   suite.test[test_rot]()
         elif args[i] == "rotg":  suite.test[test_rotg]()
         elif args[i] == "rotm":  suite.test[test_rotm]()
-        # elif args[i] == "rotmg": suite.test[test_rotmg]()
+        elif args[i] == "rotmg": suite.test[test_rotmg]()
         elif args[i] == "scal":  suite.test[test_scal]()
         elif args[i] == "swap":  suite.test[test_swap]()
         else: print("unknown routine:", args[i])
