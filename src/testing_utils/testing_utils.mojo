@@ -37,7 +37,7 @@ def generate_random_scalar[
 
 
 # Error check following BLAS++ check_gemm:
-# NOTE: can't get epsilon value in Mojo; using tol32, tol64
+# NOTE: might use this for dot, gemv, ger, geru, gemm, symv, hemv, symm, trmv, trsv?, trmm, trsm?
 fn check_gemm_error[dtype: DType](
     m: Int, n: Int, k: Int,
     alpha: Scalar[dtype],

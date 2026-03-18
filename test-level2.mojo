@@ -170,7 +170,6 @@ def ger_test[
                 for j in range(n):
                     assert_almost_equal(Scalar[dtype](py=sp_res[i][j]), res_mojo[(i*n)+j], atol=atol)
 
-
 def syr_test[
     dtype: DType,
     n: Int,
@@ -428,6 +427,110 @@ def gbmv_test[
             )
             assert_true(ok)
 
+def trsv_test[
+    dtype: DType,
+    n: Int,
+    trans: Bool,
+    uplo: Int,
+    diag: Int,
+]():
+    with DeviceContext() as ctx:
+        A_d = ctx.enqueue_create_buffer[dtype](n * n)
+        A = ctx.enqueue_create_host_buffer[dtype](n * n)
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+        x = ctx.enqueue_create_host_buffer[dtype](n)
+
+        generate_random_arr[dtype](n * n, A.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -1, 1)
+
+        # Zero out off-triangle elements to make A strictly triangular
+        for i in range(n):
+            for j in range(n):
+                # upper triangular
+                if uplo == 0:
+                    if i > j:
+                        A[i * n + j] = 0
+                # lower triangular
+                else:
+                    if i < j:
+                        A[i * n + j] = 0
+
+        # Handle diagonal based on diag parameter
+        for i in range(n):
+            # unit diagonal
+            if diag == 1:
+                A[i * n + i] = 1
+            # non-unit diagonal: make diagonally dominant to reduce numerical instability
+            else:
+                A[i * n + i] += 1000
+
+        ctx.enqueue_copy(A_d, A)
+        ctx.enqueue_copy(x_d, x)
+        ctx.synchronize()
+
+        # Compute norms for error checks
+        var norm_A = frobenius_norm[dtype](A.unsafe_ptr(), n * n)
+        var norm_x = frobenius_norm[dtype](x.unsafe_ptr(), n)
+
+        blas_trsv[dtype](
+            uplo,
+            trans,
+            diag,
+            n,
+            A_d.unsafe_ptr(), n,
+            x_d.unsafe_ptr(), 1,
+            ctx,
+        )
+
+        # Import SciPy and numpy
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_A = Python.list()
+        py_x = Python.list()
+        for i in range(n * n):
+            py_A.append(A[i])
+        for i in range(n):
+            py_x.append(x[i])
+
+        var sp_res: PythonObject
+
+        if dtype == DType.float32:
+            np_A = np.array(py_A, dtype=np.float32).reshape(n, n)
+            np_x = np.array(py_x, dtype=np.float32)
+            sp_res = sp_blas.strsv(np_A, np_x,
+                lower=0 if uplo else 1,
+                trans=1 if trans else 0,
+                diag=1 if diag else 0
+            )
+        elif dtype == DType.float64:
+            np_A = np.array(py_A, dtype=np.float64).reshape(n, n)
+            np_x = np.array(py_x, dtype=np.float64)
+            sp_res = sp_blas.dtrsv(np_A, np_x,
+                lower=0 if uplo else 1,
+                trans=1 if trans else 0,
+                diag=1 if diag else 0
+            )
+        else:
+            print("Unsupported type: ", dtype)
+            return
+
+        with x_d.map_to_host() as res_mojo:
+            var norm_diff = Scalar[dtype](0)
+            for i in range(n):
+                var diff = res_mojo[i] - Scalar[dtype](py=sp_res[i])
+                norm_diff += diff * diff
+            norm_diff = sqrt(norm_diff)
+
+            var ok = check_gemm_error[dtype](
+                1, n, n,
+                Scalar[dtype](1), Scalar[dtype](0),
+                norm_A, norm_x, Scalar[dtype](0),
+                norm_diff
+            )
+            assert_true(ok)
+
 def test_gemv():
     gemv_test[DType.float32,  64,  64, False]()
     gemv_test[DType.float32,  64,  64, True]()
@@ -466,6 +569,24 @@ def test_gbmv():
     gbmv_test[DType.float64, 512,  64, 1, 2, False]()
     gbmv_test[DType.float64, 512,  64, 2, 2, True]()
 
+def test_trsv():
+    trsv_test[DType.float32,  64,  True, 0, 0]()
+    trsv_test[DType.float32,  64,  True, 1, 0]()
+    trsv_test[DType.float32,  64,  True, 0, 1]()
+    trsv_test[DType.float32,  64,  True, 1, 1]()
+    trsv_test[DType.float32,  64,  False, 0, 0]()
+    trsv_test[DType.float32,  64,  False, 1, 0]()
+    trsv_test[DType.float32,  64,  False, 0, 1]()
+    trsv_test[DType.float32,  64,  False, 1, 1]()
+    trsv_test[DType.float64,  64,  True, 0, 0]()
+    trsv_test[DType.float64,  64,  True, 1, 0]()
+    trsv_test[DType.float64,  64,  True, 0, 1]()
+    trsv_test[DType.float64,  64,  True, 1, 1]()
+    trsv_test[DType.float64,  64,  False, 0, 0]()
+    trsv_test[DType.float64,  64,  False, 1, 0]()
+    trsv_test[DType.float64,  64,  False, 0, 1]()
+    trsv_test[DType.float64,  64,  False, 1, 1]()
+
 def main():
     print("--- MojoBLAS Level 2 routines testing ---")
     var args = argv()
@@ -477,8 +598,10 @@ def main():
     for i in range(1, len(args)):
         if args[i] == "gemv":    suite.test[test_gemv]()
         elif args[i] == "ger":   suite.test[test_ger]()
-        # elif args[i] == "syr":   suite.test[test_syr]()
-        # elif args[i] == "syr2":  suite.test[test_syr2]()
+        elif args[i] == "syr":   suite.test[test_syr]()
+        elif args[i] == "syr2":  suite.test[test_syr2]()
+        elif args[i] == "gbmv":  suite.test[test_gbmv]()
+        elif args[i] == "trsv":  suite.test[test_trsv]()
         else: print("unknown routine:", args[i])
     suite^.run()
 
