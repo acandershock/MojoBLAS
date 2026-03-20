@@ -427,6 +427,153 @@ def gbmv_test[
             )
             assert_true(ok)
 
+def sbmv_test[
+    dtype: DType,
+    n: Int,
+    k: Int,
+    upper: Bool,
+]():
+    comptime lda = k + 1
+
+    with DeviceContext() as ctx:
+        # Dense symmetric host matrix (reference)
+        A_dense = ctx.enqueue_create_host_buffer[dtype](n * n)
+
+        # Band storage (symmetric)
+        A_band_rm = ctx.enqueue_create_host_buffer[dtype](lda * n)
+        A_band_cm = ctx.enqueue_create_host_buffer[dtype](n * lda)
+        A_d = ctx.enqueue_create_buffer[dtype](lda * n)
+
+        x = ctx.enqueue_create_host_buffer[dtype](n)
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+
+        y = ctx.enqueue_create_host_buffer[dtype](n)
+        y_d = ctx.enqueue_create_buffer[dtype](n)
+
+        # --- Generate symmetric dense matrix ---
+        generate_random_arr[dtype](n * n, A_dense.unsafe_ptr(), -1, 1)
+
+        # Force symmetry: A = 0.5 * (A + A^T)
+        for i in range(n):
+            for j in range(i, n):
+                var aij = A_dense[i * n + j]
+                var aji = A_dense[j * n + i]
+                var sym = (aij + aji) * Scalar[dtype](0.5)
+                A_dense[i * n + j] = sym
+                A_dense[j * n + i] = sym
+
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n, y.unsafe_ptr(), -100, 100)
+
+        # Convert dense -> symmetric row-major band for MojoBLAS routine
+        dense_to_sym_band_rm(
+            A_dense.unsafe_ptr(),
+            A_band_rm.unsafe_ptr(),
+            n,
+            k,
+            upper
+        )
+
+        # Convert dense -> symmetric col-major band for SciPy routine
+        dense_to_sym_band_cm(
+            A_dense.unsafe_ptr(),
+            A_band_cm.unsafe_ptr(),
+            n,
+            k,
+            upper
+        )
+
+        ctx.enqueue_copy(A_d, A_band_rm)
+        ctx.enqueue_copy(x_d, x)
+        ctx.enqueue_copy(y_d, y)
+        ctx.synchronize()
+
+        var alpha = generate_random_scalar[dtype](-100, 100)
+        var beta  = generate_random_scalar[dtype](-100, 100)
+
+        var norm_A = frobenius_norm[dtype](A_dense.unsafe_ptr(), n * n)
+        var norm_x = frobenius_norm[dtype](x.unsafe_ptr(), n)
+        var norm_y = frobenius_norm[dtype](y.unsafe_ptr(), n)
+
+        blas_sbmv[dtype](
+            1 if upper else 0,
+            n,
+            k,
+            alpha,
+            A_d.unsafe_ptr(), lda,
+            x_d.unsafe_ptr(), 1,
+            beta,
+            y_d.unsafe_ptr(), 1,
+            ctx,
+        )
+
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_A = Python.list()
+        py_x = Python.list()
+        py_y = Python.list()
+
+        for i in range(n * lda):
+            py_A.append(A_band_cm[i])
+        for i in range(n):
+            py_x.append(x[i])
+            py_y.append(y[i])
+
+        var sp_res: PythonObject
+
+        if dtype == DType.float32:
+            # order='F' is col-major, 'C' is row-major
+            np_A = np.array(py_A, dtype=np.float32).reshape(lda, n, order='F')
+            np_x = np.array(py_x, dtype=np.float32)
+            np_y = np.array(py_y, dtype=np.float32)
+
+            sp_res = sp_blas.ssbmv(
+                k,
+                alpha,
+                np_A,
+                np_x,
+                beta=beta,
+                y=np_y,
+                lower=0 if upper else 1
+            )
+
+        elif dtype == DType.float64:
+            np_A = np.array(py_A, dtype=np.float64).reshape(lda, n, order='F')
+            np_x = np.array(py_x, dtype=np.float64)
+            np_y = np.array(py_y, dtype=np.float64)
+
+            sp_res = sp_blas.dsbmv(
+                k,
+                alpha,
+                np_A,
+                np_x,
+                beta=beta,
+                y=np_y,
+                lower=0 if upper else 1
+            )
+        else:
+            print("Unsupported type")
+            return
+
+        with y_d.map_to_host() as res_mojo:
+            var norm_diff = Scalar[dtype](0)
+
+            for i in range(n):
+                var diff = res_mojo[i] - Scalar[dtype](py=sp_res[i])
+                norm_diff += diff * diff
+
+            norm_diff = sqrt(norm_diff)
+
+            var ok = check_gemm_error[dtype](
+                1, n, n,
+                alpha, beta,
+                norm_A, norm_x, norm_y,
+                norm_diff
+            )
+            assert_true(ok)
+
 def trsv_test[
     dtype: DType,
     n: Int,
@@ -569,6 +716,24 @@ def test_gbmv():
     gbmv_test[DType.float64, 512,  64, 1, 2, False]()
     gbmv_test[DType.float64, 512,  64, 2, 2, True]()
 
+def test_sbmv():
+    sbmv_test[DType.float32,  64,  1, False]()
+    sbmv_test[DType.float32,  64,  2, True]()
+    sbmv_test[DType.float32,  64,  16, False]()
+    sbmv_test[DType.float32,  64,  16, True]()
+    sbmv_test[DType.float64,  64,  1, False]()
+    sbmv_test[DType.float64,  64,  2, True]()
+    sbmv_test[DType.float64,  64,  16, False]()
+    sbmv_test[DType.float64,  64,  16, True]()
+    sbmv_test[DType.float32, 512,  1, False]()
+    sbmv_test[DType.float32, 512,  2, True]()
+    sbmv_test[DType.float32, 512,  32, False]()
+    sbmv_test[DType.float32, 512,  32, True]()
+    sbmv_test[DType.float64, 512,  1, False]()
+    sbmv_test[DType.float64, 512,  2, True]()
+    sbmv_test[DType.float64, 512,  32, False]()
+    sbmv_test[DType.float64, 512,  32, True]()
+
 def test_trsv():
     trsv_test[DType.float32,  64,  True, 0, 0]()
     trsv_test[DType.float32,  64,  True, 1, 0]()
@@ -598,6 +763,7 @@ def main():
     for i in range(1, len(args)):
         if args[i] == "gemv":    suite.test[test_gemv]()
         elif args[i] == "ger":   suite.test[test_ger]()
+        elif args[i] == "sbmv": suite.test[test_sbmv]()
         elif args[i] == "syr":   suite.test[test_syr]()
         elif args[i] == "syr2":  suite.test[test_syr2]()
         elif args[i] == "gbmv":  suite.test[test_gbmv]()
