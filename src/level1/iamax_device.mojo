@@ -90,8 +90,9 @@ fn blas_iamax[dtype: DType](
     ctx: DeviceContext
 ) raises:
 
-    blas_error_if(n < 0, "blas_iamax", "n", n)
-    blas_error_if(incx <= 0, "blas_iamx", "incx", incx)
+    blas_error_if["blas_iamax", "n < 0"](n<=0)
+    blas_error_if["blas_iamax", "incx <= 0"](incx <= 0)
+
 
     comptime kernel = iamax_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](

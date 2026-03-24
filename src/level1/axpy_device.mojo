@@ -30,9 +30,9 @@ fn blas_axpy[dtype: DType](
     incy: Int,
     ctx: DeviceContext
 ) raises:
-    blas_error_if(n < 0, "axpy", "n", n)
-    blas_error_if(incx == 0, "axpy", "incx", incx)
-    blas_error_if(incy == 0, "axpy", "incy", incy)
+    blas_error_if["blas_axpy", "n < 0"](n < 0)
+    blas_error_if["blas_axpy", "incx == 0"](incx == 0)
+    blas_error_if["blas_axpy", "incy == 0"](incy == 0)
 
     # quick return
     if(a == 0) :

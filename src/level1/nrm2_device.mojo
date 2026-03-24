@@ -58,8 +58,8 @@ fn blas_nrm2[dtype: DType](
     d_out: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
-    blas_error_if(n < 0, "blas_nrm2", "n", n)
-    blas_error_if(incx <= 0, "blas_nrm2", "incx", incx)
+    blas_error_if["blas_nrm2", "n < 0"](n < 0)
+    blas_error_if["blas_nrm2", "incx <= 0"](incx <= 0)
     
     comptime kernel = nrm2_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](

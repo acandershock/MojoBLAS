@@ -27,8 +27,8 @@ fn blas_scal[dtype: DType] (
     ctx: DeviceContext
 ) raises:
 
-    blas_error_if(n < 0, "blas_scal", "n", n)
-    blas_error_if(incx <= 0, "blas_scal", "incx", incx)
+    blas_error_if["blas_scal", "n < 0"](n < 0)
+    blas_error_if["blas_scal", "incx <= 0"](incx <= 0)
 
 
     comptime kernel = scal_device[dtype]

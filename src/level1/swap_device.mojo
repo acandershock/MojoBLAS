@@ -31,9 +31,9 @@ fn blas_swap[dtype: DType](
     incy: Int,
     ctx: DeviceContext
 ) raises:
-    blas_error_if(n < 0, "blas_swap", "n", n)
-    blas_error_if(incx == 0, "blas_swap", "incx", incx)
-    blas_error_if(incy == 0, "blas_swap", "incy", incy)
+    blas_error_if["blas_swap", "n < 0"](n < 0)
+    blas_error_if["blas_swap", "incx == 0"](incx == 0)
+    blas_error_if["blas_swap", "incy == 0"](incy == 0)
 
     comptime kernel = swap_device[dtype]
     ctx.enqueue_function[kernel, kernel](

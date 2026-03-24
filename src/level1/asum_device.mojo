@@ -62,8 +62,8 @@ fn blas_asum[dtype: DType](
     d_res: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
-    blas_error_if(n < 1, "asum", "n", n)
-    blas_error_if(incx <=0, "asum", "incx", incx)
+    blas_error_if["blas_asum", "n < 0"](n < 0)
+    blas_error_if["blas_asum", "incx <= 0"](incx <= 0)
 
     comptime kernel = asum_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](

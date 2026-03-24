@@ -42,9 +42,10 @@ fn blas_rot[dtype: DType](
     s: Scalar[dtype],
     ctx: DeviceContext
 ) raises:
-    blas_error_if(n < 0, "blas_rot", "n", n)
-    blas_error_if(incx == 0, "blas_rot", "incx", incx)
-    blas_error_if(incy == 0, "blas_rot", "incy", incy)
+    blas_error_if["blas_rot", "n < 0"](n < 0)
+    blas_error_if["blas_rot", "incx == 0"](incx == 0)
+    blas_error_if["blas_rot", "incy == 0"](incy == 0)
+
     
     # quick return 
     if(n == 0 or (c == 1 and s == 0)) :

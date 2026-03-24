@@ -61,9 +61,9 @@ fn blas_rotm[dtype: DType](
     d_param: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
-    blas_error_if(n < 0, "blas_rotm", "n", n)
-    blas_error_if(incx == 0, "blas_rotm", "incx", incx)
-    blas_error_if(incy == 0, "blas_rotm", "incy", incy)
+    blas_error_if["blas_rotm", "n < 0"](n < 0)
+    blas_error_if["blas_rotm", "incx == 0"](incx == 0)
+    blas_error_if["blas_rotm", "incy == 0"](incy == 0)
 
     if(n == 0 ): 
         return

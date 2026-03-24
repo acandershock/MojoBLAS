@@ -31,9 +31,9 @@ fn blas_copy[dtype: DType](
     ctx: DeviceContext
 ) raises:
 
-    blas_error_if(n<=0, "blas_copy", "n", n)
-    blas_error_if(incx == 0, "blas_copy", "incx", incx)
-    blas_error_if(incy == 0, "blas_copy", "incy", incy)
+    blas_error_if["blas_copy", "n < 0"](n < 0)
+    blas_error_if["blas_copy", "incx == 0"](incx == 0)
+    blas_error_if["blas_copy", "incy == 0"](incy == 0)
 
     
     comptime kernel = copy_device[dtype]

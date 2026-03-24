@@ -68,7 +68,9 @@ fn blas_dotc[dtype: DType](
     d_out: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
-    blas_error_if(n < 1, "blas_dotc", "n", n)
+    blas_error_if["blas_dotc", "n < 0"](n < 0)
+    blas_error_if["blas_dotc", "incx == 0"](incx == 0)
+    blas_error_if["blas_dotc", "incy == 0"](incy == 0)
 
     comptime kernel = dotc_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](
