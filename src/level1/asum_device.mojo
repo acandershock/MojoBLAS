@@ -18,9 +18,6 @@ fn asum_device[
     incx: Int,
     result: UnsafePointer[Scalar[dtype], MutAnyOrigin]
 ):
-    if n < 1 or incx <= 0:
-        result[0] = 0
-        return
 
     var local_tid = thread_idx.x
 
@@ -65,6 +62,9 @@ fn blas_asum[dtype: DType](
     d_res: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
+    blas_error_if(n < 1, "asum", "n", n)
+    blas_error_if(incx <=0, "asum", "incx", incx)
+
     comptime kernel = asum_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](
         n,

@@ -13,10 +13,6 @@ fn copy_device[dtype: DType](
     y: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     incy: Int
 ):
-    if (n <= 0):
-        return
-    if (incx == 0 or incy == 0):
-        return
 
     var global_i = global_idx.x
     var n_threads = Int(grid_dim.x * block_dim.x)
@@ -34,6 +30,12 @@ fn blas_copy[dtype: DType](
     incy: Int,
     ctx: DeviceContext
 ) raises:
+
+    blas_error_if(n<=0, "blas_copy", "n", n)
+    blas_error_if(incx == 0, "blas_copy", "incx", incx)
+    blas_error_if(incy == 0, "blas_copy", "incy", incy)
+
+    
     comptime kernel = copy_device[dtype]
     ctx.enqueue_function[kernel, kernel](
         n,

@@ -17,8 +17,7 @@ fn rot_device[
     c: Scalar[dtype],
     s: Scalar[dtype]
 ):
-    if (n < 1):
-        return
+
 
     var global_tid = block_idx.x * block_dim.x + thread_idx.x
     var n_threads = grid_dim.x * block_dim.x
@@ -43,6 +42,14 @@ fn blas_rot[dtype: DType](
     s: Scalar[dtype],
     ctx: DeviceContext
 ) raises:
+    blas_error_if(n < 0, "blas_rot", "n", n)
+    blas_error_if(incx == 0, "blas_rot", "incx", incx)
+    blas_error_if(incy == 0, "blas_rot", "incy", incy)
+    
+    # quick return 
+    if(n == 0 or (c == 1 and s == 0)) :
+        return
+
     comptime kernel = rot_device[dtype]
     ctx.enqueue_function[kernel, kernel](
         n,

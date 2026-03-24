@@ -89,6 +89,10 @@ fn blas_iamax[dtype: DType](
     d_res: UnsafePointer[Scalar[DType.int64], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
+
+    blas_error_if(n < 0, "blas_iamax", "n", n)
+    blas_error_if(incx <= 0, "blas_iamx", "incx", incx)
+
     comptime kernel = iamax_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](
         n, d_v, incx,
