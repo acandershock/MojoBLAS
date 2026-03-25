@@ -17,8 +17,6 @@ fn rotm_device[
     param: UnsafePointer[Scalar[dtype], MutAnyOrigin]
 ):
     var flag = param[0]
-    if (n < 1):
-        return
 
     var idx = block_idx.x * block_dim.x + thread_idx.x
     var n_threads = grid_dim.x * block_dim.x
@@ -63,6 +61,12 @@ fn blas_rotm[dtype: DType](
     d_param: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
+    blas_error_if["blas_rotm", "n < 0"](n < 0)
+    blas_error_if["blas_rotm", "incx == 0"](incx == 0)
+    blas_error_if["blas_rotm", "incy == 0"](incy == 0)
+
+    if(n == 0 ): 
+        return
     comptime kernel = rotm_device[dtype]
     ctx.enqueue_function[kernel, kernel](
         n,

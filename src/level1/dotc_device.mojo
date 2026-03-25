@@ -20,8 +20,6 @@ fn dotc_device[
     incy: Int,
     output: UnsafePointer[Scalar[dtype], MutAnyOrigin],
 ):
-    if n < 1:
-        return
 
     var global_i = block_dim.x * block_idx.x + thread_idx.x
     var n_threads = grid_dim.x * block_dim.x
@@ -70,6 +68,10 @@ fn blas_dotc[dtype: DType](
     d_out: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
+    blas_error_if["blas_dotc", "n < 0"](n < 0)
+    blas_error_if["blas_dotc", "incx == 0"](incx == 0)
+    blas_error_if["blas_dotc", "incy == 0"](incy == 0)
+
     comptime kernel = dotc_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](
         n, d_x, incx,

@@ -10,12 +10,6 @@ fn scal_device[dtype: DType](
     x: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     incx: Int,
 ):
-    if (n <= 0):
-        return
-    if (a == 0):
-        return
-    if (incx == 0):
-        return
 
     var global_i = global_idx.x
     var n_threads = Int(grid_dim.x * block_dim.x)
@@ -32,6 +26,11 @@ fn blas_scal[dtype: DType] (
     incx: Int,
     ctx: DeviceContext
 ) raises:
+
+    blas_error_if["blas_scal", "n < 0"](n < 0)
+    blas_error_if["blas_scal", "incx <= 0"](incx <= 0)
+
+
     comptime kernel = scal_device[dtype]
     ctx.enqueue_function[kernel, kernel](
         n, a, d_x, incx,

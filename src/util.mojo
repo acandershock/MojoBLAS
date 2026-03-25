@@ -1,5 +1,8 @@
-# error checking blas_error_if(condition, __function_name__, "parameter_name", parameter)
-fn blas_error_if[T: Stringable ](cond: Bool, caller: String, param: String, val: T) raises:
+
+fn blas_error_if[caller: String, cond_str: String](cond: Bool) raises: 
+    """
+    Function raises an error describing the bad paramters passed to caller.
+    """
     if(cond) :
-        raise Error(caller, " Error: ", param, " = ", String(val))
+        raise Error("Error: {} in {}".format(cond_str, caller))
     

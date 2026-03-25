@@ -12,12 +12,6 @@ fn axpy_device[dtype: DType](
     y: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     incy: Int
 ):
-    if (n <= 0):
-        return
-    if (a == 0):
-        return
-    if (incx == 0 or incy == 0):
-        return
 
     var global_i = global_idx.x
     var n_threads = Int(grid_dim.x * block_dim.x)
@@ -36,6 +30,14 @@ fn blas_axpy[dtype: DType](
     incy: Int,
     ctx: DeviceContext
 ) raises:
+    blas_error_if["blas_axpy", "n < 0"](n < 0)
+    blas_error_if["blas_axpy", "incx == 0"](incx == 0)
+    blas_error_if["blas_axpy", "incy == 0"](incy == 0)
+
+    # quick return
+    if(a == 0) :
+        return
+        
     comptime kernel = axpy_device[dtype]
     ctx.enqueue_function[kernel, kernel](
         n, a,

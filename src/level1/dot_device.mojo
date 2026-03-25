@@ -19,8 +19,6 @@ fn dot_device[
     incy: Int,
     output: UnsafePointer[Scalar[dtype], MutAnyOrigin],
 ):
-    if n < 1:
-        return
 
     var global_i = block_dim.x * block_idx.x + thread_idx.x
     var n_threads = grid_dim.x * block_dim.x
@@ -59,6 +57,11 @@ fn blas_dot[dtype: DType](
     d_out: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     ctx: DeviceContext
 ) raises:
+    
+    blas_error_if["blas_dot", "n < 0"](n < 0)
+    blas_error_if["blas_copy", "incx == 0"](incx == 0)
+    blas_error_if["blas_copy", "incy == 0"](incy == 0)
+
     comptime kernel = dot_device[TBsize, dtype]
     ctx.enqueue_function[kernel, kernel](
         n, d_x, incx,
