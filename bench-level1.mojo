@@ -6,7 +6,7 @@ from src import *
 
 # Reference: https://github.com/icl-utk-edu/blaspp/blob/master/test/run_tests.py
 
-comptime WARMUP = 10
+comptime WARMUP = 5
 
 
 def bytes_per_elem(dtype: DType) -> Int:
@@ -74,9 +74,8 @@ def parse_args(mut params: RunParams) -> Bool:
         params.sizes.append(16777216)
 
     if len(params.routines) == 0:
-        # TODO: add rotm, rotmg
         params.routines = ["asum", "axpy", "copy", "dot", "dotc",
-                           "dotu", "iamax", "nrm2", "rot", "rotg", "scal", "swap"]
+                           "dotu", "iamax", "nrm2", "rot", "rotg", "rotm", "rotmg", "scal", "swap"]
 
     return True
 
@@ -324,43 +323,62 @@ def bench_rotg[dtype: DType](iters: Int):
     print("rotg, cpu,", dtype, ", -, ", iters, ",", Int(avg), "ns")
 
 
-# TODO: uncomment once rotmg is added
-# def bench_rotm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-#     x_h = ctx.enqueue_create_host_buffer[dtype](n)
-#     y_h = ctx.enqueue_create_host_buffer[dtype](n)
-#     generate_random_arr[dtype](n, x_h.unsafe_ptr(), -1000, 1000)
-#     generate_random_arr[dtype](n, y_h.unsafe_ptr(), -1000, 1000)
-#     x_d = ctx.enqueue_create_buffer[dtype](n)
-#     y_d = ctx.enqueue_create_buffer[dtype](n)
-#     ctx.enqueue_copy(x_d, x_h)
-#     ctx.enqueue_copy(y_d, y_h)
+def bench_rotm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
+    x_h = ctx.enqueue_create_host_buffer[dtype](n)
+    y_h = ctx.enqueue_create_host_buffer[dtype](n)
+    generate_random_arr[dtype](n, x_h.unsafe_ptr(), -1000, 1000)
+    generate_random_arr[dtype](n, y_h.unsafe_ptr(), -1000, 1000)
+    x_d = ctx.enqueue_create_buffer[dtype](n)
+    y_d = ctx.enqueue_create_buffer[dtype](n)
+    ctx.enqueue_copy(x_d, x_h)
+    ctx.enqueue_copy(y_d, y_h)
 
-#     # d1 and d2 must be positive
-#     var d1 = generate_random_scalar[dtype](1, 100)
-#     var d2 = generate_random_scalar[dtype](1, 100)
-#     var x1 = generate_random_scalar[dtype](-100, 100)
-#     var y1 = generate_random_scalar[dtype](-100, 100)
-#     param_h = ctx.enqueue_create_host_buffer[dtype](5)
-#     param_d = ctx.enqueue_create_buffer[dtype](5)
-#     # NOTE: need rotmg to compute a valid param
-#     ctx.enqueue_copy(param_d, param_h)
-#     ctx.synchronize()
+    # d1 and d2 must be positive
+    var d1 = generate_random_scalar[dtype](1, 100)
+    var d2 = generate_random_scalar[dtype](1, 100)
+    var x1 = generate_random_scalar[dtype](-100, 100)
+    var y1 = generate_random_scalar[dtype](-100, 100)
+    var param = List[Scalar[dtype]](length=5, fill=0.0)
+    blas_rotmg[dtype](UnsafePointer(to=d1), UnsafePointer(to=d2), UnsafePointer(to=x1), UnsafePointer(to=y1), param)
+    param_h = ctx.enqueue_create_host_buffer[dtype](5)
+    param_d = ctx.enqueue_create_buffer[dtype](5)
+    var param_ptr = param_h.unsafe_ptr()
+    for i in range(5):
+        param_ptr[i] = param[i]
+    ctx.enqueue_copy(param_d, param_h)
+    ctx.synchronize()
 
-#     for _ in range(WARMUP):
-#         blas_rotm[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, param_d.unsafe_ptr(), ctx)
+    for _ in range(WARMUP):
+        blas_rotm[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, param_d.unsafe_ptr(), ctx)
 
-#     start = monotonic()
-#     for _ in range(iters):
-#         blas_rotm[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, param_d.unsafe_ptr(), ctx)
-#     end = monotonic()
+    start = monotonic()
+    for _ in range(iters):
+        blas_rotm[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, param_d.unsafe_ptr(), ctx)
+    end = monotonic()
 
-#     var avg = Float64(end - start) / Float64(iters)
-#     # bandwidth: 2n reads + 2n writes = 4n
-#     var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-#     print("rotm,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    var avg = Float64(end - start) / Float64(iters)
+    # bandwidth: 2n reads + 2n writes = 4n
+    var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
+    print("rotm,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
 
 
-# TODO: add bench_rotmg
+def bench_rotmg[dtype: DType](iters: Int):
+    var d1 = generate_random_scalar[dtype](1, 100)
+    var d2 = generate_random_scalar[dtype](1, 100)
+    var x1 = generate_random_scalar[dtype](-100, 100)
+    var y1 = generate_random_scalar[dtype](-100, 100)
+    var param = List[Scalar[dtype]](length=5, fill=0.0)
+
+    for _ in range(WARMUP):
+        blas_rotmg[dtype](UnsafePointer(to=d1), UnsafePointer(to=d2), UnsafePointer(to=x1), UnsafePointer(to=y1), param)
+
+    start = monotonic()
+    for _ in range(iters):
+        blas_rotmg[dtype](UnsafePointer(to=d1), UnsafePointer(to=d2), UnsafePointer(to=x1), UnsafePointer(to=y1), param)
+    end = monotonic()
+
+    var avg = Float64(end - start) / Float64(iters)
+    print("rotmg, cpu,", dtype, ", -, ", iters, ",", Int(avg), "ns")
 
 
 def bench_scal[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -430,12 +448,13 @@ def run_dtype[
         elif (routine == "nrm2"):  bench_nrm2[dtype](n, params.iters, ctx)
         elif (routine == "rot"):   bench_rot[dtype](n, params.iters, ctx)
         elif (routine == "rotg"):
+            # rotg and rotmg don't take n -- run once and return
             bench_rotg[dtype](params.iters)
             return
-        # elif (routine == "rotm"):  bench_rotm[dtype](n, params.iters, ctx)
-        # elif (routine == "rotmg"):
-            # bench_rotmg[dtype](params.iters)  # TODO: implement blas_rotmg
-            # return
+        elif (routine == "rotm"):  bench_rotm[dtype](n, params.iters, ctx)
+        elif (routine == "rotmg"):
+            bench_rotmg[dtype](params.iters)
+            return
         elif (routine == "scal"):  bench_scal[dtype](n, params.iters, ctx)
         elif (routine == "swap"):  bench_swap[dtype](n, params.iters, ctx)
         else:
