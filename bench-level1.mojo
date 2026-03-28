@@ -22,17 +22,46 @@ struct RunParams:
     var dtype_str: String
     var sizes: List[Int]
     var iters: Int
+    var dim_str: String
 
     fn __init__(out self):
         self.routines = List[String]()
         self.dtype_str = String("all")
         self.sizes = List[Int]()
         self.iters = 100
+        self.dim_str = String("")
+
+# dim parameter usage: --dim size
+#                   or --dim min_size:max_size (doubling size with each step)
+#                   or --dim min_size:max_size:step
+def parse_dim(dim_str: String, mut sizes: List[Int]):
+    if dim_str.find(":") != -1:
+        var parts = dim_str.split(":")
+        var start = Int(parts[0])
+        var stop = Int(parts[1])
+        if len(parts) == 3:
+            # linear range
+            var step = Int(parts[2])
+            var n = start
+            while n <= stop:
+                sizes.append(n)
+                n += step
+        else:
+            # doubling each step or single input size
+            var n = start
+            while n <= stop:
+                sizes.append(n)
+                n *= 2
+    elif dim_str.find(",") != -1:
+        var parts = dim_str.split(",")
+        for i in range(len(parts)):
+            sizes.append(Int(parts[i]))
+    else:
+        sizes.append(Int(dim_str))
 
 
 def parse_args(mut params: RunParams) -> Bool:
     var args = argv()
-    var n_custom = 0
 
     var i = 1
     while i < len(args):
@@ -44,12 +73,12 @@ def parse_args(mut params: RunParams) -> Bool:
             else:
                 print("--type requires a value")
                 return False
-        elif arg == "--n":
+        elif arg == "--dim":
             if i + 1 < len(args):
-                n_custom = Int(args[i + 1])
+                params.dim_str = String(args[i + 1])
                 i += 2
             else:
-                print("--n requires a value")
+                print("--dim requires a value")
                 return False
         elif arg == "--iters":
             if i + 1 < len(args):
@@ -64,9 +93,10 @@ def parse_args(mut params: RunParams) -> Bool:
         else:
             i += 1
 
-    if n_custom > 0:
-        params.sizes.append(n_custom)
+    if len(params.dim_str) > 0:
+        parse_dim(params.dim_str, params.sizes)
     else:
+        # Defaults:
         params.sizes.append(1024)
         params.sizes.append(8192)
         params.sizes.append(1048576)
@@ -99,7 +129,7 @@ def bench_asum[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: n reads
     var bw_gbs = Float64(n * bytes_per_elem(dtype)) / avg
-    print("asum,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("asum," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_axpy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -126,7 +156,7 @@ def bench_axpy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: 2n reads + n writes = 3n
     var bw_gbs = Float64(3 * n * bytes_per_elem(dtype)) / avg
-    print("axpy,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("axpy," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_copy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -151,7 +181,7 @@ def bench_copy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: n reads + n writes = 2n
     var bw_gbs = Float64(2 * n * bytes_per_elem(dtype)) / avg
-    print("copy,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("copy," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_dot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -177,7 +207,7 @@ def bench_dot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: 2n reads
     var bw_gbs = Float64(2 * n * bytes_per_elem(dtype)) / avg
-    print("dot,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("dot," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_dotc[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -203,7 +233,7 @@ def bench_dotc[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: 2 vectors * 2n floats = 4n reads
     var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("dotc,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("dotc," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_dotu[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -229,7 +259,7 @@ def bench_dotu[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: 2 vectors * 2n floats = 4n reads
     var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("dotu,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("dotu," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_iamax[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -251,7 +281,7 @@ def bench_iamax[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: n reads
     var bw_gbs = Float64(n * bytes_per_elem(dtype)) / avg
-    print("iamax,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("iamax," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_nrm2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -273,7 +303,7 @@ def bench_nrm2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: n reads
     var bw_gbs = Float64(n * bytes_per_elem(dtype)) / avg
-    print("nrm2,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("nrm2," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_rot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext) where dtype.is_floating_point():
@@ -302,7 +332,7 @@ def bench_rot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext) where dtype.
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: 2n reads + 2n writes = 4n
     var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("rot,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("rot," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_rotg[dtype: DType](iters: Int):
@@ -320,7 +350,7 @@ def bench_rotg[dtype: DType](iters: Int):
     end = monotonic()
 
     var avg = Float64(end - start) / Float64(iters)
-    print("rotg, cpu,", dtype, ", -, ", iters, ",", Int(avg), "ns")
+    print("rotg,cpu," + String(dtype) + ",-," + String(iters) + "," + String(Int(avg)) + ",")
 
 
 def bench_rotm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -359,7 +389,7 @@ def bench_rotm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: 2n reads + 2n writes = 4n
     var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("rotm,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("rotm," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_rotmg[dtype: DType](iters: Int):
@@ -378,7 +408,7 @@ def bench_rotmg[dtype: DType](iters: Int):
     end = monotonic()
 
     var avg = Float64(end - start) / Float64(iters)
-    print("rotmg, cpu,", dtype, ", -, ", iters, ",", Int(avg), "ns")
+    print("rotmg,cpu," + String(dtype) + ",-," + String(iters) + "," + String(Int(avg)) + ",")
 
 
 def bench_scal[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -401,7 +431,7 @@ def bench_scal[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: n reads + n writes = 2n
     var bw_gbs = Float64(2 * n * bytes_per_elem(dtype)) / avg
-    print("scal,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("scal," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def bench_swap[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -426,7 +456,7 @@ def bench_swap[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     var avg = Float64(end - start) / Float64(iters)
     # bandwidth: 2n reads + 2n writes = 4n
     var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("swap,", ctx.name(), ",", dtype, ",", n, ",", iters, ",", Int(avg), "ns,", bw_gbs, "GB/s")
+    print("swap," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
 
 
 def run_dtype[
@@ -471,7 +501,7 @@ def main():
     if not parse_args(params):
         return
 
-    print("op, device, dtype, n, iters, avg time, bandwidth")
+    print("op,device,dtype,n,iters,avg_ns,bandwidth_GBs")
 
     with DeviceContext() as ctx:
         for routine in(params.routines):
