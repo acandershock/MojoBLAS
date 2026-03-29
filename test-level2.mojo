@@ -1014,6 +1014,118 @@ def tbsv_test[
             )
             assert_true(ok)
 
+
+def tpmv_test[
+    dtype: DType,
+    n: Int,
+    trans: Bool,
+    uplo: Int,
+    diag: Int,
+]():
+    with DeviceContext() as ctx:
+        A_dense = ctx.enqueue_create_host_buffer[dtype](n * n)
+
+        AP_d = ctx.enqueue_create_buffer[dtype](n * n)
+        AP = ctx.enqueue_create_host_buffer[dtype](n * n)
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+        x = ctx.enqueue_create_host_buffer[dtype](n)
+
+        generate_random_arr[dtype](n * n, A_dense.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -1, 1)
+
+        # Zero out off-triangle elements to make A strictly triangular
+        for i in range(n):
+            for j in range(n):
+                # upper triangular
+                if uplo == 0:
+                    if i > j:
+                        A_dense[i * n + j] = 0
+                # lower triangular
+                else:
+                    if i < j:
+                        A_dense[i * n + j] = 0
+
+        # Handle diagonal based on diag parameter
+        for i in range(n):
+            # unit diagonal
+            if diag == 1:
+                A_dense[i * n + i] = 1
+            # non-unit diagonal: make diagonally dominant to reduce numerical instability
+            else:
+                A_dense[i * n + i] += 1000
+
+        dense_to_tri_band(A_dense.unsafe_ptr(), AP.unsafe_ptr(), n, uplo)
+
+        ctx.enqueue_copy(AP_d, AP)
+        ctx.enqueue_copy(x_d, x)
+        ctx.synchronize()
+
+        # Compute norms for error checks
+        var norm_A = frobenius_norm[dtype](A_dense.unsafe_ptr(), n * n)
+        var norm_x = frobenius_norm[dtype](x.unsafe_ptr(), n)
+
+        blas_tpmv[dtype](
+            uplo,
+            trans,
+            diag,
+            n,
+            AP_d.unsafe_ptr(),
+            x_d.unsafe_ptr(), 1,
+            ctx,
+        )
+
+        # Import SciPy and numpy
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_A = Python.list()
+        py_x = Python.list()
+        for i in range(n * n):
+            py_A.append(AP[i])
+        for i in range(n):
+            py_x.append(x[i])
+
+        var sp_res: PythonObject
+
+        if dtype == DType.float32:
+            np_A = np.array(py_A, dtype=np.float32)
+            np_x = np.array(py_x, dtype=np.float32)
+            sp_res = sp_blas.stpmv(n, np_A, np_x,
+                lower=0 if uplo else 1,
+                trans=1 if trans else 0,
+                diag=1 if diag else 0
+            )
+        elif dtype == DType.float64:
+            np_A = np.array(py_A, dtype=np.float64)
+            np_x = np.array(py_x, dtype=np.float64)
+            sp_res = sp_blas.dtpmv(n, np_A, np_x,
+                lower=0 if uplo else 1,
+                trans=1 if trans else 0,
+                diag=1 if diag else 0
+            )
+        else:
+            print("Unsupported type: ", dtype)
+            return
+
+        with x_d.map_to_host() as res_mojo:
+
+            var norm_diff = Scalar[dtype](0)
+            for i in range(n):
+                var diff = res_mojo[i] - Scalar[dtype](py=sp_res[i])
+                print(res_mojo[i], Scalar[dtype](py=sp_res[i]))
+                norm_diff += diff * diff
+            norm_diff = sqrt(norm_diff)
+            print(norm_diff)
+
+            var ok = check_gemm_error[dtype](
+                1, n, n,
+                Scalar[dtype](1), Scalar[dtype](0),
+                norm_A, norm_x, Scalar[dtype](0),
+                norm_diff
+            )
+            assert_true(ok)
+
 def test_gemv():
     gemv_test[DType.float32,  64,  64, False]()
     gemv_test[DType.float32,  64,  64, True]()
@@ -1157,6 +1269,24 @@ def test_tbsv():
     tbsv_test[DType.float64, 512, 16, 0, False, 0]()
     tbsv_test[DType.float64, 512, 16, 1, True,  0]()
     tbsv_test[DType.float64, 512, 16, 0, True,  0]()
+
+def test_tpmv():
+    tpmv_test[DType.float32,  64,  True,  0, 0]()
+    tpmv_test[DType.float32,  64,  True,  1, 0]()
+    tpmv_test[DType.float32,  64,  True,  0, 1]()
+    tpmv_test[DType.float32,  64,  True,  1, 1]()
+    tpmv_test[DType.float32,  64,  False, 0, 0]()
+    tpmv_test[DType.float32,  64,  False, 1, 0]()
+    tpmv_test[DType.float32,  64,  False, 0, 1]()
+    tpmv_test[DType.float32,  64,  False, 1, 1]()
+    tpmv_test[DType.float64,  64,  True,  0, 0]()
+    tpmv_test[DType.float64,  64,  True,  1, 0]()
+    tpmv_test[DType.float64,  64,  True,  0, 1]()
+    tpmv_test[DType.float64,  64,  True,  1, 1]()
+    tpmv_test[DType.float64,  64,  False, 0, 0]()
+    tpmv_test[DType.float64,  64,  False, 1, 0]()
+    tpmv_test[DType.float64,  64,  False, 0, 1]()
+    tpmv_test[DType.float64,  64,  False, 1, 1]()
 
 def main():
     print("--- MojoBLAS Level 2 routines testing ---")
