@@ -40,9 +40,11 @@ def gemm_test[
         var ldb = k if trans_b else n
         var ldc = n
 
-        print("m=", m, "n=", n, "k=", k)
-        print("lda=", lda, "ldb=", ldb, "ldc=", ldc)
-        print("trans_a=", trans_a, "trans_b=", trans_b)
+        #TODO Remove debug prints before PR
+        # print("m=", m, "n=", n, "k=", k)
+        # print("lda=", lda, "ldb=", ldb, "ldc=", ldc)
+        # print("trans_a=", trans_a, "trans_b=", trans_b)
+
         blas_gemm[dtype](
             trans_a, trans_b,
             m, n, k,
@@ -74,8 +76,8 @@ def gemm_test[
             np_C = np.array(py_C, dtype=np.float32).reshape(m, n)               
 
         elif dtype == DType.float64:
-            np_A = np.array(py_A, dtype=np.float64).reshape(m, k) if not trans_a else np.array(py_A, dtype=np.float32).reshape(k, m)
-            np_B = np.array(py_B, dtype=np.float64).reshape(k, n) if not trans_b else np.array(py_B, dtype=np.float32).reshape(n, k)
+            np_A = np.array(py_A, dtype=np.float64).reshape(m, k) if not trans_a else np.array(py_A, dtype=np.float64).reshape(k, m)
+            np_B = np.array(py_B, dtype=np.float64).reshape(k, n) if not trans_b else np.array(py_B, dtype=np.float64).reshape(n, k)
             np_C = np.array(py_C, dtype=np.float64).reshape(m, n) 
             #sp_res = sp_blas.dgemm(alpha, np_A, np_B, beta=beta, c=np_C, trans_a= 0 if trans_a else 1, trans_b= 0 if trans_b else 1)
         else :
@@ -119,25 +121,65 @@ def test_gemm() :
     gemm_test[DType.float32, 64, 64, 1024, False, True]()
     gemm_test[DType.float32, 64, 64, 1024, True, True]()
 
-    # gemm_test[DType.float64, 64, 64, 64, False, False]()
-    # gemm_test[DType.float64, 64, 64, 64, True, False]()
-    # gemm_test[DType.float64, 64, 64, 64, False, True]()
-    # gemm_test[DType.float64, 64, 64, 64, True, True]()
+    gemm_test[DType.float32, 1024, 64, 1024, False, False]()
+    gemm_test[DType.float32, 1024, 64, 1024, True, False]()
+    gemm_test[DType.float32, 1024, 64, 1024, False, True]()
+    gemm_test[DType.float32, 1024, 64, 1024, True, True]()
 
-    # gemm_test[DType.float64, 64, 1024, 64, False, False]()
-    # gemm_test[DType.float64, 64, 1024, 64, True, False]()
-    # gemm_test[DType.float64, 64, 1024, 64, False, True]()
-    # gemm_test[DType.float64, 64, 1024, 64, True, True]()
+    gemm_test[DType.float32, 64, 1024, 1024, False, False]()
+    gemm_test[DType.float32, 64, 1024, 1024, True, False]()
+    gemm_test[DType.float32, 64, 1024, 1024, False, True]()
+    gemm_test[DType.float32, 64, 1024, 1024, True, True]()
 
-    # gemm_test[DType.float64, 1024, 64, 64, False, False]()
-    # gemm_test[DType.float64, 1024, 64, 64, True, False]()
-    # gemm_test[DType.float64, 1024, 64, 64, False, True]()
-    # gemm_test[DType.float64, 1024, 64, 64, True, True]()
+    gemm_test[DType.float32, 1024, 1024, 64, False, False]()
+    gemm_test[DType.float32, 1024, 1024, 64, True, False]()
+    gemm_test[DType.float32, 1024, 1024, 64, False, True]()
+    gemm_test[DType.float32, 1024, 1024, 64, True, True]()
 
-    # gemm_test[DType.float64, 64, 64, 1024, False, False]()
-    # gemm_test[DType.float64, 64, 64, 1024, True, False]()
-    # gemm_test[DType.float64, 64, 64, 1024, False, True]()
-    # gemm_test[DType.float64, 64, 64, 1024, True, True]()
+    gemm_test[DType.float32, 1024, 1024, 1024, False, False]()
+    gemm_test[DType.float32, 1024, 1024, 1024, True, False]()
+    gemm_test[DType.float32, 1024, 1024, 1024, False, True]()
+    gemm_test[DType.float32, 1024, 1024, 1024, True, True]()
+
+    gemm_test[DType.float64, 64, 64, 64, False, False]()
+    gemm_test[DType.float64, 64, 64, 64, True, False]()
+    gemm_test[DType.float64, 64, 64, 64, False, True]()
+    gemm_test[DType.float64, 64, 64, 64, True, True]()
+
+    gemm_test[DType.float64, 64, 1024, 64, False, False]()
+    gemm_test[DType.float64, 64, 1024, 64, True, False]()
+    gemm_test[DType.float64, 64, 1024, 64, False, True]()
+    gemm_test[DType.float64, 64, 1024, 64, True, True]()
+
+    gemm_test[DType.float64, 1024, 64, 64, False, False]()
+    gemm_test[DType.float64, 1024, 64, 64, True, False]()
+    gemm_test[DType.float64, 1024, 64, 64, False, True]()
+    gemm_test[DType.float64, 1024, 64, 64, True, True]()
+
+    gemm_test[DType.float64, 64, 64, 1024, False, False]()
+    gemm_test[DType.float64, 64, 64, 1024, True, False]()
+    gemm_test[DType.float64, 64, 64, 1024, False, True]()
+    gemm_test[DType.float64, 64, 64, 1024, True, True]()
+
+    gemm_test[DType.float64, 1024, 64, 1024, False, False]()
+    gemm_test[DType.float64, 1024, 64, 1024, True, False]()
+    gemm_test[DType.float64, 1024, 64, 1024, False, True]()
+    gemm_test[DType.float64, 1024, 64, 1024, True, True]()
+
+    gemm_test[DType.float64, 64, 1024, 1024, False, False]()
+    gemm_test[DType.float64, 64, 1024, 1024, True, False]()
+    gemm_test[DType.float64, 64, 1024, 1024, False, True]()
+    gemm_test[DType.float64, 64, 1024, 1024, True, True]()
+
+    gemm_test[DType.float64, 1024, 1024, 64, False, False]()
+    gemm_test[DType.float64, 1024, 1024, 64, True, False]()
+    gemm_test[DType.float64, 1024, 1024, 64, False, True]()
+    gemm_test[DType.float64, 1024, 1024, 64, True, True]()
+
+    gemm_test[DType.float64, 1024, 1024, 1024, False, False]()
+    gemm_test[DType.float64, 1024, 1024, 1024, True, False]()
+    gemm_test[DType.float64, 1024, 1024, 1024, False, True]()
+    gemm_test[DType.float64, 1024, 1024, 1024, True, True]()
 
 
 def main():
