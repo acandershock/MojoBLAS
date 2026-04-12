@@ -94,6 +94,14 @@ fn blas_gemm[dtype: DType](
     ldc: Int,
     ctx: DeviceContext
 ) raises :
+    """
+    Performs Matrix multiplication of from:
+    C := alpha*op( A )*op( B ) + beta*C
+    where op ( X ) is one of 
+    op( X ) = X or op ( X ) = X**T
+    alpha and beta are scalars, and A, B and C are matrices, with op( A )
+    an m by k matrix,  op( B )  a  k by n matrix and  C an m by n matrix.
+    """
 
     blas_error_if["blas_gemm" , "m < 0"](m < 0)
     blas_error_if["blas_gemm" , "n < 0"](n < 0)
