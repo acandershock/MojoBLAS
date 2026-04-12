@@ -40,11 +40,6 @@ def gemm_test[
         var ldb = k if trans_b else n
         var ldc = n
 
-        #TODO Remove debug prints before PR
-        # print("m=", m, "n=", n, "k=", k)
-        # print("lda=", lda, "ldb=", ldb, "ldc=", ldc)
-        # print("trans_a=", trans_a, "trans_b=", trans_b)
-
         blas_gemm[dtype](
             trans_a, trans_b,
             m, n, k,
