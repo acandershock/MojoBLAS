@@ -141,8 +141,6 @@ def bench_gemm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext) :
 
 
 
-
-
 def run_dtype[
     dtype: DType
 ](
