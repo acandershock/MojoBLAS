@@ -135,6 +135,29 @@ fn frobenius_norm_symmetric[dtype: DType](
 
     return sqrt(sum)
 
+fn dense_to_tri_band_rm[dtype: DType](
+    A_dense: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+    A_band: UnsafePointer[Scalar[dtype], MutAnyOrigin],
+    n: Int,
+    k: Int,
+    upper: Int,
+):
+    var lda = k + 1
+
+    for i in range(n * lda):
+        A_band[i] = 0
+
+    if upper:
+        for i in range(n):
+            var j_end = min(n - 1, i + k)
+            for j in range(i, j_end + 1):
+                A_band[i * lda + (j - i)] = A_dense[i * n + j]
+    else:
+        for i in range(n):
+            var j_start = max(0, i - k)
+            for j in range(j_start, i + 1):
+                A_band[i * lda + (i - j)] = A_dense[i * n + j]
+
 fn dense_to_band[dtype: DType](
     A: UnsafePointer[Scalar[dtype], MutAnyOrigin],
     B: UnsafePointer[Scalar[dtype], MutAnyOrigin],
