@@ -1054,7 +1054,8 @@ def tpmv_test[
             else:
                 A_dense[i * n + i] += 1000
 
-        dense_to_tri_band(A_dense.unsafe_ptr(), AP.unsafe_ptr(), n, uplo)
+        # Pack into column-major packed storage
+        dense_to_tri_packed(A_dense.unsafe_ptr(), AP.unsafe_ptr(), n, uplo)
 
         ctx.enqueue_copy(AP_d, AP)
         ctx.enqueue_copy(x_d, x)
@@ -1125,6 +1126,7 @@ def tpmv_test[
                 norm_diff
             )
             assert_true(ok)
+
 
 def test_gemv():
     gemv_test[DType.float32,  64,  64, False]()
@@ -1307,6 +1309,7 @@ def main():
         elif args[i] == "trsv":  suite.test[test_trsv]()
         elif args[i] == "tbmv":  suite.test[test_tbmv]()
         elif args[i] == "tbsv":  suite.test[test_tbsv]()
+        elif args[i] == "tpmv":  suite.test[test_tbmv]()
         elif args[i] == "symv":  suite.test[test_symv]()
         else: print("unknown routine:", args[i])
     suite^.run()

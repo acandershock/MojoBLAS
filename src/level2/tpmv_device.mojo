@@ -26,34 +26,29 @@ fn stpmv_device(
         var sum = x[i * incx]
         if trans:
             if uplo:
-                var index = (i * (i + 1)) / 2 + i
+                var col_start = i * (i + 1) / 2
                 if not diag:
-                    sum *= AP[index]
+                    sum *= AP[col_start + i]
+                for j in range(0, i):
+                    sum += AP[col_start + j] * x[j * incx]
+            else:
+                var col_start = i * n - ((i - 1) * i) / 2
+                if not diag:
+                    sum *= AP[col_start]
                 for j in range(i + 1, n):
-                    index += j
+                    sum += AP[col_start + (j - i)] * x[j * incx]
+        else:
+            if uplo:
+                if not diag:
+                    sum *= AP[i * (i + 1) / 2 + i]
+                for j in range(i + 1, n):
+                    var index = j * (j + 1) / 2 + i
                     sum += AP[index] * x[j * incx]
             else:
                 if not diag:
                     sum *= AP[i * n - ((i - 1) * i) / 2]
-                var index = i
                 for j in range(0, i):
-                    sum += AP[index] * x[j * incx]
-                    index += n - j
-        else:
-            if uplo:
-                var index = (i * (i + 1)) / 2 + i
-                if not diag:
-                    sum *= AP[index]
-                index -= i
-                for j in range(0, i):
-                    sum += AP[index] * x[j * incx]
-                    index += 1
-            else:
-                var index = i * n - ((i - 1) * i) / 2
-                if not diag:
-                    sum *= AP[index]
-                for j in range(i + 1, n):
-                    index += 1
+                    var index = j * n - ((j - 1) * j) / 2 + (i - j)
                     sum += AP[index] * x[j * incx]
         workspace[i * incx] = sum
 
@@ -75,34 +70,29 @@ fn dtpmv_device(
         var sum = x[i * incx]
         if trans:
             if uplo:
-                var index = (i * (i + 1)) / 2 + i
+                var col_start = i * (i + 1) / 2
                 if not diag:
-                    sum *= AP[index]
+                    sum *= AP[col_start + i]
+                for j in range(0, i):
+                    sum += AP[col_start + j] * x[j * incx]
+            else:
+                var col_start = i * n - ((i - 1) * i) / 2
+                if not diag:
+                    sum *= AP[col_start]
                 for j in range(i + 1, n):
-                    index += j
+                    sum += AP[col_start + (j - i)] * x[j * incx]
+        else:
+            if uplo:
+                if not diag:
+                    sum *= AP[i * (i + 1) / 2 + i]
+                for j in range(i + 1, n):
+                    var index = j * (j + 1) / 2 + i
                     sum += AP[index] * x[j * incx]
             else:
                 if not diag:
                     sum *= AP[i * n - ((i - 1) * i) / 2]
-                var index = i
                 for j in range(0, i):
-                    sum += AP[index] * x[j * incx]
-                    index += n - j
-        else:
-            if uplo:
-                var index = (i * (i + 1)) / 2 + i
-                if not diag:
-                    sum *= AP[index]
-                index -= i
-                for j in range(0, i):
-                    sum += AP[index] * x[j * incx]
-                    index += 1
-            else:
-                var index = i * n - ((i - 1) * i) / 2
-                if not diag:
-                    sum *= AP[index]
-                for j in range(i + 1, n):
-                    index += 1
+                    var index = j * n - ((j - 1) * j) / 2 + (i - j)
                     sum += AP[index] * x[j * incx]
         workspace[i * incx] = sum
 
