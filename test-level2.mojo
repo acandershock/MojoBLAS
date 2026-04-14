@@ -223,6 +223,59 @@ def syr_test[
             for i in range(n * n):
                 assert_almost_equal(res_mojo[i], Scalar[dtype](py=sp_flat[i]), atol=atol)
 
+def spr_test[
+    dtype: DType,
+    n: Int,
+    uplo: Int,
+]():
+    comptime ap_len = n * (n + 1) // 2
+
+    with DeviceContext() as ctx:
+        AP_d = ctx.enqueue_create_buffer[dtype](ap_len)
+        AP = ctx.enqueue_create_host_buffer[dtype](ap_len)
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+        x = ctx.enqueue_create_host_buffer[dtype](n)
+
+        generate_random_arr[dtype](ap_len, AP.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -100, 100)
+
+        ctx.enqueue_copy(AP_d, AP)
+        ctx.enqueue_copy(x_d, x)
+        ctx.synchronize()
+
+        var alpha = generate_random_scalar[dtype](-100, 100)
+
+        blas_spr[dtype](uplo, n, alpha, x_d.unsafe_ptr(), 1, AP_d.unsafe_ptr(), ctx)
+
+        # Import SciPy and numpy
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_AP = Python.list()
+        py_x = Python.list()
+        for i in range(ap_len):
+            py_AP.append(AP[i])
+        for i in range(n):
+            py_x.append(x[i])
+
+        var sp_res: PythonObject
+        if dtype == DType.float32:
+            np_AP = np.array(py_AP, dtype=np.float32)
+            np_x = np.array(py_x, dtype=np.float32)
+            sp_res = sp_blas.sspr(alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
+        elif dtype == DType.float64:
+            np_AP = np.array(py_AP, dtype=np.float64)
+            np_x = np.array(py_x, dtype=np.float64)
+            sp_res = sp_blas.dspr(alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
+        else:
+            print("Unsupported type: ", dtype)
+            return
+
+        with AP_d.map_to_host() as res_mojo:
+            for i in range(ap_len):
+                assert_almost_equal(res_mojo[i], Scalar[dtype](py=sp_res[i]), atol=atol)
+
 def syr2_test[
     dtype: DType,
     n: Int,
@@ -780,6 +833,12 @@ def test_ger():
     ger_test[DType.float64, 64, 64]()
     ger_test[DType.float64, 256, 256]()
 
+def test_spr():
+    spr_test[DType.float32,  256, 1]()
+    spr_test[DType.float32, 1024, 0]()
+    spr_test[DType.float64,  256, 0]()
+    spr_test[DType.float64, 1024, 1]()
+
 def test_syr():
     syr_test[DType.float32,  256, 1]()
     syr_test[DType.float32, 1024, 0]()
@@ -860,6 +919,7 @@ def main():
         if   args[i] == "gemv":  suite.test[test_gemv]()
         elif args[i] == "ger":   suite.test[test_ger]()
         elif args[i] == "sbmv":  suite.test[test_sbmv]()
+        elif args[i] == "spr":   suite.test[test_spr]()
         elif args[i] == "syr":   suite.test[test_syr]()
         elif args[i] == "syr2":  suite.test[test_syr2]()
         elif args[i] == "gbmv":  suite.test[test_gbmv]()
