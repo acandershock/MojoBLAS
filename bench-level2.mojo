@@ -103,7 +103,7 @@ def parse_args(mut params: RunParams) -> Bool:
     if len(params.routines) == 0:
         params.routines = ["gemv", "gbmv", "ger", "sbmv", "symv", "spmv",
                            "syr", "syr2", "spr", "spr2", "tbmv", "tbsv",
-                           "trmv", "trsv"]
+                           "trmv", "trsv", "tpmv"]
 
     return True
 
@@ -504,6 +504,38 @@ def bench_tbsv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
+def bench_tpmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
+    var ap_size = n * (n + 1) // 2
+    x_h = ctx.enqueue_create_host_buffer[dtype](n)
+    AP_h = ctx.enqueue_create_host_buffer[dtype](ap_size)
+    generate_random_arr[dtype](n, x_h.unsafe_ptr(), -1, 1)
+    generate_random_arr[dtype](ap_size, AP_h.unsafe_ptr(), -1, 1)
+    x_d = ctx.enqueue_create_buffer[dtype](n)
+    AP_d = ctx.enqueue_create_buffer[dtype](ap_size)
+    ctx.enqueue_copy(x_d, x_h)
+    ctx.enqueue_copy(AP_d, AP_h)
+    ctx.synchronize()
+
+    for _ in range(WARMUP):
+        blas_tpmv[dtype](1, False, 0, n, AP_d.unsafe_ptr(), x_d.unsafe_ptr(), 1, ctx)
+
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
+        blas_tpmv[dtype](1, False, 0, n, AP_d.unsafe_ptr(), x_d.unsafe_ptr(), 1, ctx)
+        end = monotonic()
+        timings[i] = Float32(end - start)
+
+    var min_max_mean = arr_min_max_mean(timings)
+
+    # bandwidth: read AP (ap_size) + read/write x (2n) = ap_size + 2n
+    var bw_gbs = Float32((ap_size + 2 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
+
+    print("tpmv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
+
 def bench_trmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     print("trmv: not yet implemented")
 
@@ -533,6 +565,7 @@ def run_dtype[
         elif (routine == "spr"):  bench_spr[dtype](n, params.iters, ctx)
         elif (routine == "spr2"): bench_spr2[dtype](n, params.iters, ctx)
         elif (routine == "tbmv"): bench_tbmv[dtype](n, params.iters, ctx)
+        elif (routine == "tpmv"): bench_tpmv[dtype](n, params.iters, ctx)
         elif (routine == "tbsv"): bench_tbsv[dtype](n, params.iters, ctx)
         elif (routine == "trmv"): bench_trmv[dtype](n, params.iters, ctx)
         elif (routine == "trsv"): bench_trsv[dtype](n, params.iters, ctx)

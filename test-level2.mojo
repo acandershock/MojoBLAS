@@ -1309,7 +1309,7 @@ def main():
         elif args[i] == "trsv":  suite.test[test_trsv]()
         elif args[i] == "tbmv":  suite.test[test_tbmv]()
         elif args[i] == "tbsv":  suite.test[test_tbsv]()
-        elif args[i] == "tpmv":  suite.test[test_tbmv]()
+        elif args[i] == "tpmv":  suite.test[test_tpmv]()
         elif args[i] == "symv":  suite.test[test_symv]()
         else: print("unknown routine:", args[i])
     suite^.run()
