@@ -123,10 +123,11 @@ fn blas_gemm[dtype: DType](
     blas_error_if["blas_gemm" , "ldc < n"](ldc < n)
 
 
-    # quick returns ? 
-    # BLAS Fast path dont load C when beta = 0 ? 
+    #quick return
+    if m == 0 or n == 0 or k == 0 : return
+
     @parameter
-    if dtype == DType.float32:      
+    if dtype == DType.float32:
         ctx.enqueue_function[sgemm_device, sgemm_device](
         trans_a_i, trans_b_i,
         m, n, k,

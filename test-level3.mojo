@@ -65,24 +65,20 @@ def gemm_test[
         for i in range(m * n):
             py_C.append(C[i])
 
+        var sp_res: PythonObject
         if dtype == DType.float32:
             np_A = np.array(py_A, dtype=np.float32).reshape(m, k) if not trans_a else np.array(py_A, dtype=np.float32).reshape(k, m)
             np_B = np.array(py_B, dtype=np.float32).reshape(k, n) if not trans_b else np.array(py_B, dtype=np.float32).reshape(n, k)
-            np_C = np.array(py_C, dtype=np.float32).reshape(m, n)               
-
+            np_C = np.array(py_C, dtype=np.float32).reshape(m, n)                   
+            sp_res = sp_blas.sgemm(alpha, np_A, np_B, beta=beta, c=np_C, trans_a=1 if trans_a else 0, trans_b=1 if trans_b else 0)
         elif dtype == DType.float64:
             np_A = np.array(py_A, dtype=np.float64).reshape(m, k) if not trans_a else np.array(py_A, dtype=np.float64).reshape(k, m)
             np_B = np.array(py_B, dtype=np.float64).reshape(k, n) if not trans_b else np.array(py_B, dtype=np.float64).reshape(n, k)
             np_C = np.array(py_C, dtype=np.float64).reshape(m, n) 
-            #sp_res = sp_blas.dgemm(alpha, np_A, np_B, beta=beta, c=np_C, trans_a= 0 if trans_a else 1, trans_b= 0 if trans_b else 1)
+            sp_res = sp_blas.dgemm(alpha, np_A, np_B, beta=beta, c=np_C, trans_a=1 if trans_a else 0, trans_b=1 if trans_b else 0)
         else :
             print("Unsupported type: ", dtype)
             return
-        
-        var op_A = np.transpose(np_A) if trans_a else np_A
-        var op_B = np.transpose(np_B) if trans_b else np_B
-
-        var sp_res = alpha * np.matmul(op_A, op_B) + beta * np_C
         
         with C_d.map_to_host() as res_mojo :
             var norm_diff = Scalar[dtype](0)
@@ -178,7 +174,7 @@ def test_gemm() :
 
 
 def main():
-    print("--- MojoBLAS Level 2 routines testing ---")
+    print("--- MojoBLAS Level 3 routines testing ---")
     var args = argv()
     if (len(args) < 2):
         TestSuite.discover_tests[__functions_in_module()]().run()
