@@ -121,16 +121,22 @@ def bench_asum[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_asum[dtype](n, x_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_asum[dtype](n, x_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: n reads
-    var bw_gbs = Float64(n * bytes_per_elem(dtype)) / avg
-    print("asum," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(n * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("asum," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_axpy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -148,15 +154,22 @@ def bench_axpy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_axpy[dtype](n, alpha, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
-        blas_axpy[dtype](n, alpha, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+    var timings = List[Float32](length=iters, fill=0.0)
 
-    var avg = Float64(end - start) / Float64(iters)
+    for i in range(iters):
+        start = monotonic()
+        blas_axpy[dtype](n, alpha, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, ctx)
+        end = monotonic()
+        timings[i] = Float32(end - start)
+
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: 2n reads + n writes = 3n
-    var bw_gbs = Float64(3 * n * bytes_per_elem(dtype)) / avg
-    print("axpy," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(3 * n * bytes_per_elem(dtype)) / min_max_mean[2]
+
+    print("axpy," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 
 def bench_copy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -173,16 +186,21 @@ def bench_copy[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_copy[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_copy[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: n reads + n writes = 2n
-    var bw_gbs = Float64(2 * n * bytes_per_elem(dtype)) / avg
-    print("copy," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
-
+    var bw_gbs = Float32(2 * n * bytes_per_elem(dtype)) / min_max_mean[2]
+    print("copy," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_dot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -199,16 +217,21 @@ def bench_dot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_dot[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_dot[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: 2n reads
-    var bw_gbs = Float64(2 * n * bytes_per_elem(dtype)) / avg
-    print("dot," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
-
+    var bw_gbs = Float32(2 * n * bytes_per_elem(dtype)) / min_max_mean[2]
+    print("dot," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_dotc[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     x_h = ctx.enqueue_create_host_buffer[dtype](2 * n)
@@ -225,16 +248,21 @@ def bench_dotc[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_dotc[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_dotc[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: 2 vectors * 2n floats = 4n reads
-    var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("dotc," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
-
+    var bw_gbs = Float32(4 * n * bytes_per_elem(dtype)) / min_max_mean[2]
+    print("dotc," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_dotu[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     x_h = ctx.enqueue_create_host_buffer[dtype](2 * n)
@@ -251,15 +279,22 @@ def bench_dotu[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_dotu[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
 
-    start = monotonic()
-    for _ in range(iters):
-        blas_dotu[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
-    end = monotonic()
+    var timings = List[Float32](length=iters, fill=0.0)
 
-    var avg = Float64(end - start) / Float64(iters)
+    for i in range(iters):
+        start = monotonic()
+        blas_dotu[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
+        end = monotonic()
+        timings[i] = Float32(end - start)
+
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: 2 vectors * 2n floats = 4n reads
-    var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("dotu," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(4 * n * bytes_per_elem(dtype)) / min_max_mean[2]
+
+    print("dotu," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 
 def bench_iamax[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -273,16 +308,22 @@ def bench_iamax[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_iamax[dtype](n, x_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_iamax[dtype](n, x_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: n reads
-    var bw_gbs = Float64(n * bytes_per_elem(dtype)) / avg
-    print("iamax," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(n * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("iamax," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_nrm2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -295,16 +336,22 @@ def bench_nrm2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_nrm2[dtype](n, x_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_nrm2[dtype](n, x_d.unsafe_ptr(), 1, res_d.unsafe_ptr(), ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: n reads
-    var bw_gbs = Float64(n * bytes_per_elem(dtype)) / avg
-    print("nrm2," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(n * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("nrm2," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_rot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext) where dtype.is_floating_point():
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -323,19 +370,24 @@ def bench_rot[dtype: DType](n: Int, iters: Int, ctx: DeviceContext) where dtype.
 
     for _ in range(WARMUP):
         blas_rot[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, c, s, ctx)
+    var timings = List[Float32](length=iters, fill=0.0)
 
-    start = monotonic()
-    for _ in range(iters):
+    for i in range(iters):
+        start = monotonic()
         blas_rot[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, c, s, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: 2n reads + 2n writes = 4n
-    var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("rot," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(4 * n * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("rot," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
-def bench_rotg[dtype: DType](iters: Int):
+def bench_rotg[dtype: DType](iters: Int, ctx: DeviceContext):
     var a = generate_random_scalar[dtype](-100, 100)
     var b = generate_random_scalar[dtype](-100, 100)
     var c = Scalar[dtype](0)
@@ -344,14 +396,20 @@ def bench_rotg[dtype: DType](iters: Int):
     for _ in range(WARMUP):
         blas_rotg[dtype](UnsafePointer(to=a), UnsafePointer(to=b), UnsafePointer(to=c), UnsafePointer(to=s))
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_rotg[dtype](UnsafePointer(to=a), UnsafePointer(to=b), UnsafePointer(to=c), UnsafePointer(to=s))
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
-    print("rotg,cpu," + String(dtype) + ",-," + String(iters) + "," + String(Int(avg)) + ",")
+    var min_max_mean = arr_min_max_mean(timings)
+    var bw_gbs: Float32 = 0.0
 
+    print("rotg,cpu," + String(dtype) + ",0," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_rotm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -381,18 +439,25 @@ def bench_rotm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_rotm[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, param_d.unsafe_ptr(), ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_rotm[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, param_d.unsafe_ptr(), ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: 2n reads + 2n writes = 4n
-    var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("rotm," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(4 * n * bytes_per_elem(dtype)) / min_max_mean[2]
+
+    print("rotm," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 
-def bench_rotmg[dtype: DType](iters: Int):
+def bench_rotmg[dtype: DType](iters: Int, ctx: DeviceContext):
     var d1 = generate_random_scalar[dtype](1, 100)
     var d2 = generate_random_scalar[dtype](1, 100)
     var x1 = generate_random_scalar[dtype](-100, 100)
@@ -402,13 +467,20 @@ def bench_rotmg[dtype: DType](iters: Int):
     for _ in range(WARMUP):
         blas_rotmg[dtype](UnsafePointer(to=d1), UnsafePointer(to=d2), UnsafePointer(to=x1), UnsafePointer(to=y1), param)
 
-    start = monotonic()
-    for _ in range(iters):
-        blas_rotmg[dtype](UnsafePointer(to=d1), UnsafePointer(to=d2), UnsafePointer(to=x1), UnsafePointer(to=y1), param)
-    end = monotonic()
+    var timings = List[Float32](length=iters, fill=0.0)
 
-    var avg = Float64(end - start) / Float64(iters)
-    print("rotmg,cpu," + String(dtype) + ",-," + String(iters) + "," + String(Int(avg)) + ",")
+    for i in range(iters):
+        start = monotonic()
+        blas_rotmg[dtype](UnsafePointer(to=d1), UnsafePointer(to=d2), UnsafePointer(to=x1), UnsafePointer(to=y1), param)
+        end = monotonic()
+        timings[i] = Float32(end - start)
+
+    var min_max_mean = arr_min_max_mean(timings)
+    var bw_gbs: Float32 = 0.0
+
+    print("rotmg,cpu," + String(dtype) + ",0," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 
 def bench_scal[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
@@ -423,16 +495,22 @@ def bench_scal[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_scal[dtype](n, alpha, x_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_scal[dtype](n, alpha, x_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: n reads + n writes = 2n
-    var bw_gbs = Float64(2 * n * bytes_per_elem(dtype)) / avg
-    print("scal," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32(2 * n * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("scal," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_swap[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -448,16 +526,21 @@ def bench_swap[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_swap[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_swap[dtype](n, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: 2n reads + 2n writes = 4n
-    var bw_gbs = Float64(4 * n * bytes_per_elem(dtype)) / avg
-    print("swap," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
-
+    var bw_gbs = Float32(4 * n * bytes_per_elem(dtype)) / min_max_mean[2]
+    print("swap," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def run_dtype[
     dtype: DType
@@ -479,11 +562,11 @@ def run_dtype[
         elif (routine == "rot"):   bench_rot[dtype](n, params.iters, ctx)
         elif (routine == "rotg"):
             # rotg and rotmg don't take n -- run once and return
-            bench_rotg[dtype](params.iters)
+            bench_rotg[dtype](params.iters, ctx)
             return
         elif (routine == "rotm"):  bench_rotm[dtype](n, params.iters, ctx)
         elif (routine == "rotmg"):
-            bench_rotmg[dtype](params.iters)
+            bench_rotmg[dtype](params.iters, ctx)
             return
         elif (routine == "scal"):  bench_scal[dtype](n, params.iters, ctx)
         elif (routine == "swap"):  bench_swap[dtype](n, params.iters, ctx)
@@ -501,7 +584,7 @@ def main():
     if not parse_args(params):
         return
 
-    print("op,device,dtype,n,iters,avg_ns,bandwidth_GBs")
+    print("op,device,dtype,n,iters,min_s,max_s,mean_s,mean_bandwidth_GBs")
 
     with DeviceContext() as ctx:
         for routine in(params.routines):
