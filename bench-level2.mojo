@@ -128,16 +128,22 @@ def bench_gemv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_gemv[dtype](False, n, n, alpha, A_d.unsafe_ptr(), n, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_gemv[dtype](False, n, n, alpha, A_d.unsafe_ptr(), n, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read A (n*n) + read x (n) + read y (n) + write y (n) = n*n + 3n
-    var bw_gbs = Float64((n * n + 3 * n) * bytes_per_elem(dtype)) / avg
-    print("gemv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((n * n + 3 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("gemv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_gbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     # square matrix m = n, band storage: kl lower diagonals, ku upper diagonals
@@ -164,16 +170,22 @@ def bench_gbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_gbmv[dtype](False, n, n, kl, ku, alpha, A_d.unsafe_ptr(), lda, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_gbmv[dtype](False, n, n, kl, ku, alpha, A_d.unsafe_ptr(), lda, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read band storage (lda*n) + read x (n) + read y (n) + write y (n) = lda*n + 3n
-    var bw_gbs = Float64((lda * n + 3 * n) * bytes_per_elem(dtype)) / avg
-    print("gbmv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((lda * n + 3 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("gbmv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_ger[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     # square matrix m = n; A += alpha * x * y^T
@@ -196,16 +208,22 @@ def bench_ger[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_ger[dtype](n, n, alpha, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, A_d.unsafe_ptr(), n, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_ger[dtype](n, n, alpha, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, A_d.unsafe_ptr(), n, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read x (n) + read y (n) + read A (n*n) + write A (n*n) = 2n*n + 2n
-    var bw_gbs = Float64((2 * n * n + 2 * n) * bytes_per_elem(dtype)) / avg
-    print("ger," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((2 * n * n + 2 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("ger," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_sbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     # symmetric banded matrix, k superdiagonals
@@ -231,16 +249,22 @@ def bench_sbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_sbmv[dtype](1, n, k, alpha, A_d.unsafe_ptr(), lda, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_sbmv[dtype](1, n, k, alpha, A_d.unsafe_ptr(), lda, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read band storage (lda*n) + read x (n) + read y (n) + write y (n) = lda*n + 3n
-    var bw_gbs = Float64((lda * n + 3 * n) * bytes_per_elem(dtype)) / avg
-    print("sbmv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((lda * n + 3 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("sbmv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_symv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     A_h = ctx.enqueue_create_host_buffer[dtype](n * n)
@@ -263,16 +287,22 @@ def bench_symv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_symv[dtype](True, n, alpha, A_d.unsafe_ptr(), n, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_symv[dtype](True, n, alpha, A_d.unsafe_ptr(), n, x_d.unsafe_ptr(), 1, beta, y_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read A (n*n/2) + read x (n) + read y (n) + write y (n) = n*n/2 + 3n
-    var bw_gbs = Float64((n * n + 3 * n) * bytes_per_elem(dtype)) / avg
-    print("symv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((n * n + 3 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("symv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_syr[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     # A += alpha * x * x^T  (upper triangle updated)
@@ -291,16 +321,22 @@ def bench_syr[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_syr[dtype](1, n, alpha, x_d.unsafe_ptr(), 1, A_d.unsafe_ptr(), n, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_syr[dtype](1, n, alpha, x_d.unsafe_ptr(), 1, A_d.unsafe_ptr(), n, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read x (n) + read triangle (n*n/2) + write triangle (n*n/2) = n*n + n
-    var bw_gbs = Float64((n * n + n) * bytes_per_elem(dtype)) / avg
-    print("syr," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((n * n + n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("syr," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_syr2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     # A += alpha * x * y^T + alpha * y * x^T  (upper triangle updated)
@@ -323,16 +359,22 @@ def bench_syr2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_syr2[dtype](1, n, alpha, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, A_d.unsafe_ptr(), n, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_syr2[dtype](1, n, alpha, x_d.unsafe_ptr(), 1, y_d.unsafe_ptr(), 1, A_d.unsafe_ptr(), n, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read x (n) + read y (n) + read triangle (n*n/2) + write triangle (n*n/2) = n*n + 2n
-    var bw_gbs = Float64((n * n + 2 * n) * bytes_per_elem(dtype)) / avg
-    print("syr2," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((n * n + 2 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("syr2," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_trsv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     # upper triangular solve: A * x = b  (non-unit diagonal)
@@ -349,16 +391,22 @@ def bench_trsv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
     for _ in range(WARMUP):
         blas_trsv[dtype](1, False, 0, n, A_d.unsafe_ptr(), n, x_d.unsafe_ptr(), 1, ctx)
 
-    start = monotonic()
-    for _ in range(iters):
+    var timings = List[Float32](length=iters, fill=0.0)
+
+    for i in range(iters):
+        start = monotonic()
         blas_trsv[dtype](1, False, 0, n, A_d.unsafe_ptr(), n, x_d.unsafe_ptr(), 1, ctx)
-    end = monotonic()
+        end = monotonic()
+        timings[i] = Float32(end - start)
 
-    var avg = Float64(end - start) / Float64(iters)
+    var min_max_mean = arr_min_max_mean(timings)
+
     # bandwidth: read triangle (n*n/2) + read/write x (2n) = n*n/2 + 2n
-    var bw_gbs = Float64((n * n / 2 + 2 * n) * bytes_per_elem(dtype)) / avg
-    print("trsv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) + "," + String(Int(avg)) + "," + String(bw_gbs))
+    var bw_gbs = Float32((n * n / 2 + 2 * n) * bytes_per_elem(dtype)) / min_max_mean[2]
 
+    print("trsv," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+          "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
+          "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def run_dtype[
     dtype: DType
