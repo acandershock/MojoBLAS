@@ -147,7 +147,6 @@ def bench_gemv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_gbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # square matrix m = n, band storage: kl lower diagonals, ku upper diagonals
     var kl = 10
     var ku = 10
     var lda = kl + ku + 1
@@ -189,7 +188,6 @@ def bench_gbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_ger[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # square matrix m = n; A += alpha * x * y^T
     A_h = ctx.enqueue_create_host_buffer[dtype](n * n)
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
     y_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -227,7 +225,6 @@ def bench_ger[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_sbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # symmetric banded matrix, k superdiagonals
     var k = 10
     var lda = k + 1
     A_h = ctx.enqueue_create_host_buffer[dtype](lda * n)
@@ -306,7 +303,6 @@ def bench_symv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_syr[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # A += alpha * x * x^T  (upper triangle updated)
     A_h = ctx.enqueue_create_host_buffer[dtype](n * n)
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
     generate_random_arr[dtype](n * n, A_h.unsafe_ptr(), -1, 1)
@@ -340,7 +336,6 @@ def bench_syr[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_syr2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # A += alpha * x * y^T + alpha * y * x^T  (upper triangle updated)
     A_h = ctx.enqueue_create_host_buffer[dtype](n * n)
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
     y_h = ctx.enqueue_create_host_buffer[dtype](n)
@@ -378,7 +373,6 @@ def bench_syr2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_trsv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # upper triangular solve: A * x = b  (non-unit diagonal)
     A_h = ctx.enqueue_create_host_buffer[dtype](n * n)
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
     generate_random_arr[dtype](n * n, A_h.unsafe_ptr(), -1, 1)
@@ -410,7 +404,6 @@ def bench_trsv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_spr[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # AP += alpha * x * x^T  (upper triangle, packed storage)
     var ap_size = n * (n + 1) // 2
     x_h = ctx.enqueue_create_host_buffer[dtype](n)
     AP_h = ctx.enqueue_create_host_buffer[dtype](ap_size)
@@ -445,7 +438,6 @@ def bench_spr[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_tbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # x = A * x  (upper triangular banded, k superdiagonals)
     var k = 10
     var lda = k + 1
     A_h = ctx.enqueue_create_host_buffer[dtype](lda * n)
@@ -480,7 +472,6 @@ def bench_tbmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_tbsv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # x = A^{-1} * x  (upper triangular banded solve, k superdiagonals)
     var k = 10
     var lda = k + 1
     A_h = ctx.enqueue_create_host_buffer[dtype](lda * n)
@@ -514,15 +505,12 @@ def bench_tbsv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
 def bench_trmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # triangular matrix-vector multiply: x = A * x
     print("trmv: not yet implemented")
 
 def bench_spmv[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # symmetric packed matrix-vector multiply: y = alpha*A*x + beta*y
     print("spmv: not yet implemented")
 
 def bench_spr2[dtype: DType](n: Int, iters: Int, ctx: DeviceContext):
-    # symmetric packed rank-2 update: A += alpha * x * y^T + alpha * y * x^T
     print("spr2: not yet implemented")
 
 def run_dtype[
