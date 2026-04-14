@@ -407,7 +407,7 @@ def bench_rotg[dtype: DType](iters: Int, ctx: DeviceContext):
     var min_max_mean = arr_min_max_mean(timings)
     var bw_gbs: Float32 = 0.0
 
-    print("rotg,cpu," + ctx.name() + "," + String(dtype) + ",0," + String(iters) +
+    print("rotg,cpu," + String(dtype) + ",0," + String(iters) +
           "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
@@ -478,7 +478,7 @@ def bench_rotmg[dtype: DType](iters: Int, ctx: DeviceContext):
     var min_max_mean = arr_min_max_mean(timings)
     var bw_gbs: Float32 = 0.0
 
-    print("rotmg,cpu," + ctx.name() + "," + String(dtype) + ",0," + String(iters) +
+    print("rotmg,cpu," + String(dtype) + ",0," + String(iters) +
           "," + String(min_max_mean[0] * 1e-9) + "," + String(min_max_mean[1] * 1e-9) +
           "," + String(min_max_mean[2] * 1e-9) + "," + String(bw_gbs))
 
