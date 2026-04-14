@@ -223,6 +223,59 @@ def syr_test[
             for i in range(n * n):
                 assert_almost_equal(res_mojo[i], Scalar[dtype](py=sp_flat[i]), atol=atol)
 
+def spr_test[
+    dtype: DType,
+    n: Int,
+    uplo: Int,
+]():
+    comptime ap_len = n * (n + 1) // 2
+
+    with DeviceContext() as ctx:
+        AP_d = ctx.enqueue_create_buffer[dtype](ap_len)
+        AP = ctx.enqueue_create_host_buffer[dtype](ap_len)
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+        x = ctx.enqueue_create_host_buffer[dtype](n)
+
+        generate_random_arr[dtype](ap_len, AP.unsafe_ptr(), -100, 100)
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -100, 100)
+
+        ctx.enqueue_copy(AP_d, AP)
+        ctx.enqueue_copy(x_d, x)
+        ctx.synchronize()
+
+        var alpha = generate_random_scalar[dtype](-100, 100)
+
+        blas_spr[dtype](uplo, n, alpha, x_d.unsafe_ptr(), 1, AP_d.unsafe_ptr(), ctx)
+
+        # Import SciPy and numpy
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+        sp_blas = sp.linalg.blas
+
+        py_AP = Python.list()
+        py_x = Python.list()
+        for i in range(ap_len):
+            py_AP.append(AP[i])
+        for i in range(n):
+            py_x.append(x[i])
+
+        var sp_res: PythonObject
+        if dtype == DType.float32:
+            np_AP = np.array(py_AP, dtype=np.float32)
+            np_x = np.array(py_x, dtype=np.float32)
+            sp_res = sp_blas.sspr(alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
+        elif dtype == DType.float64:
+            np_AP = np.array(py_AP, dtype=np.float64)
+            np_x = np.array(py_x, dtype=np.float64)
+            sp_res = sp_blas.dspr(alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
+        else:
+            print("Unsupported type: ", dtype)
+            return
+
+        with AP_d.map_to_host() as res_mojo:
+            for i in range(ap_len):
+                assert_almost_equal(res_mojo[i], Scalar[dtype](py=sp_res[i]), atol=atol)
+
 def syr2_test[
     dtype: DType,
     n: Int,
@@ -764,6 +817,203 @@ def trsv_test[
             )
             assert_true(ok)
 
+def tbmv_test[
+    dtype: DType,
+    n: Int,
+    k: Int,
+    uplo: Int,
+    trans: Bool,
+    diag: Int,
+]():
+    comptime lda = k + 1
+
+    with DeviceContext() as ctx:
+        A_dense = ctx.enqueue_create_host_buffer[dtype](n * n)
+        A_band = ctx.enqueue_create_host_buffer[dtype](lda * n)
+        A_d = ctx.enqueue_create_buffer[dtype](lda * n)
+        x = ctx.enqueue_create_host_buffer[dtype](n)
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+
+        generate_random_arr[dtype](n * n, A_dense.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](n, x.unsafe_ptr(), -100, 100)
+
+        # Zero out elements outside the triangle and outside the band
+        for i in range(n):
+            for j in range(n):
+                if uplo:  # upper triangular
+                    if j < i or j > i + k:
+                        A_dense[i * n + j] = 0
+                else:  # lower triangular
+                    if j > i or j < i - k:
+                        A_dense[i * n + j] = 0
+            # Set unit diagonal to 1 so the numpy reference is consistent
+            if diag:
+                A_dense[i * n + i] = 1
+
+        # Pack dense triangular band into row-major band storage
+        dense_to_tri_band_rm(A_dense.unsafe_ptr(), A_band.unsafe_ptr(), n, k, uplo)
+
+        ctx.enqueue_copy(A_d, A_band)
+        ctx.enqueue_copy(x_d, x)
+        ctx.synchronize()
+
+        var norm_A = frobenius_norm[dtype](A_dense.unsafe_ptr(), n * n)
+        var norm_x = frobenius_norm[dtype](x.unsafe_ptr(), n)
+
+        blas_tbmv[dtype](
+            uplo, trans, diag,
+            n, k,
+            A_d.unsafe_ptr(), lda,
+            x_d.unsafe_ptr(), 1,
+            UnsafePointer[Scalar[dtype], MutAnyOrigin](), # Emtpy temp (forces auto allocation)
+            ctx,
+        )
+
+        np = Python.import_module("numpy")
+
+        py_A = Python.list()
+        py_x = Python.list()
+        for i in range(n * n):
+            py_A.append(A_dense[i])
+        for i in range(n):
+            py_x.append(x[i])
+
+        var sp_res: PythonObject
+
+        if dtype == DType.float32:
+            np_A = np.array(py_A, dtype=np.float32).reshape(n, n)
+            np_x = np.array(py_x, dtype=np.float32)
+            sp_res = np.dot(np_A.T, np_x) if trans else np.dot(np_A, np_x)
+        elif dtype == DType.float64:
+            np_A = np.array(py_A, dtype=np.float64).reshape(n, n)
+            np_x = np.array(py_x, dtype=np.float64)
+            sp_res = np.dot(np_A.T, np_x) if trans else np.dot(np_A, np_x)
+        else:
+            print("Unsupported type: ", dtype)
+            return
+
+        with x_d.map_to_host() as res_mojo:
+            var norm_diff = Scalar[dtype](0)
+            for i in range(n):
+                var diff = res_mojo[i] - Scalar[dtype](py=sp_res[i])
+                norm_diff += diff * diff
+            norm_diff = sqrt(norm_diff)
+
+            var ok = check_gemm_error[dtype](
+                1, n, n,
+                Scalar[dtype](1), Scalar[dtype](0),
+                norm_A, norm_x, Scalar[dtype](0),
+                norm_diff
+            )
+            assert_true(ok)
+
+def tbsv_test[
+    dtype: DType,
+    n: Int,
+    k: Int,
+    uplo: Int,
+    trans: Bool,
+    diag: Int,
+]():
+    comptime lda = k + 1
+
+    with DeviceContext() as ctx:
+        A_dense = ctx.enqueue_create_host_buffer[dtype](n * n)
+        A_band = ctx.enqueue_create_host_buffer[dtype](lda * n)
+        A_d = ctx.enqueue_create_buffer[dtype](lda * n)
+        b = ctx.enqueue_create_host_buffer[dtype](n)
+        x_d = ctx.enqueue_create_buffer[dtype](n)
+
+        generate_random_arr[dtype](n * n, A_dense.unsafe_ptr(), -1, 1)
+        generate_random_arr[dtype](n, b.unsafe_ptr(), -1, 1)
+
+        # Zero out elements outside the triangle and band; ensure diagonal
+        # dominance for a well-conditioned system
+        for i in range(n):
+            for j in range(n):
+                if uplo:  # upper triangular
+                    if j < i or j > i + k:
+                        A_dense[i * n + j] = 0
+                else:  # lower triangular
+                    if j > i or j < i - k:
+                        A_dense[i * n + j] = 0
+            if diag:
+                A_dense[i * n + i] = 1
+            else:
+                # Make diagonally dominant to keep the system well-conditioned
+                A_dense[i * n + i] += 1000
+
+        # Pack dense triangular band into row-major band storage
+        dense_to_tri_band_rm(A_dense.unsafe_ptr(), A_band.unsafe_ptr(), n, k, uplo)
+
+        ctx.enqueue_copy(A_d, A_band)
+        ctx.enqueue_copy(x_d, b)
+        ctx.synchronize()
+
+        var norm_A = frobenius_norm[dtype](A_dense.unsafe_ptr(), n * n)
+        var norm_b = frobenius_norm[dtype](b.unsafe_ptr(), n)
+
+        blas_tbsv[dtype](
+            uplo, trans, diag,
+            n, k,
+            A_d.unsafe_ptr(), lda,
+            x_d.unsafe_ptr(), 1,
+            ctx,
+        )
+
+        sp = Python.import_module("scipy")
+        np = Python.import_module("numpy")
+
+        py_A = Python.list()
+        py_b = Python.list()
+        for i in range(n * n):
+            py_A.append(A_dense[i])
+        for i in range(n):
+            py_b.append(b[i])
+
+        var sp_res: PythonObject
+
+        var is_lower = 0 if uplo else 1
+        var trans_mode = 1 if trans else 0
+        var unit_diag = True if diag else False
+
+        if dtype == DType.float32:
+            np_A = np.array(py_A, dtype=np.float32).reshape(n, n)
+            np_b = np.array(py_b, dtype=np.float32)
+            sp_res = sp.linalg.solve_triangular(
+                np_A, np_b,
+                lower=is_lower,
+                trans=trans_mode,
+                unit_diagonal=unit_diag,
+            )
+        elif dtype == DType.float64:
+            np_A = np.array(py_A, dtype=np.float64).reshape(n, n)
+            np_b = np.array(py_b, dtype=np.float64)
+            sp_res = sp.linalg.solve_triangular(
+                np_A, np_b,
+                lower=is_lower,
+                trans=trans_mode,
+                unit_diagonal=unit_diag,
+            )
+        else:
+            print("Unsupported type: ", dtype)
+            return
+
+        with x_d.map_to_host() as res_mojo:
+            var norm_diff = Scalar[dtype](0)
+            for i in range(n):
+                var diff = res_mojo[i] - Scalar[dtype](py=sp_res[i])
+                norm_diff += diff * diff
+            norm_diff = sqrt(norm_diff)
+
+            var ok = check_gemm_error[dtype](
+                1, n, n,
+                Scalar[dtype](1), Scalar[dtype](0),
+                norm_A, norm_b, Scalar[dtype](0),
+                norm_diff
+            )
+            assert_true(ok)
+
 def test_gemv():
     gemv_test[DType.float32,  64,  64, False]()
     gemv_test[DType.float32,  64,  64, True]()
@@ -779,6 +1029,12 @@ def test_ger():
     ger_test[DType.float32, 256, 256]()
     ger_test[DType.float64, 64, 64]()
     ger_test[DType.float64, 256, 256]()
+
+def test_spr():
+    spr_test[DType.float32,  256, 1]()
+    spr_test[DType.float32, 1024, 0]()
+    spr_test[DType.float64,  256, 0]()
+    spr_test[DType.float64, 1024, 1]()
 
 def test_syr():
     syr_test[DType.float32,  256, 1]()
@@ -848,6 +1104,60 @@ def test_trsv():
     trsv_test[DType.float64,  64,  False, 0, 1]()
     trsv_test[DType.float64,  64,  False, 1, 1]()
 
+def test_tbmv():
+    # uplo: 0=lower, 1=upper   trans: False/True   diag: 0=non-unit, 1=unit
+    tbmv_test[DType.float32,  64,  1, 1, False, 0]()
+    tbmv_test[DType.float32,  64,  1, 0, False, 0]()
+    tbmv_test[DType.float32,  64,  2, 1, True,  0]()
+    tbmv_test[DType.float32,  64,  2, 0, True,  0]()
+    tbmv_test[DType.float32,  64,  4, 1, False, 1]()
+    tbmv_test[DType.float32,  64,  4, 0, False, 1]()
+    tbmv_test[DType.float32,  64,  4, 1, True,  1]()
+    tbmv_test[DType.float32,  64,  4, 0, True,  1]()
+    tbmv_test[DType.float64,  64,  1, 1, False, 0]()
+    tbmv_test[DType.float64,  64,  1, 0, False, 0]()
+    tbmv_test[DType.float64,  64,  2, 1, True,  0]()
+    tbmv_test[DType.float64,  64,  2, 0, True,  0]()
+    tbmv_test[DType.float64,  64,  4, 1, False, 1]()
+    tbmv_test[DType.float64,  64,  4, 0, False, 1]()
+    tbmv_test[DType.float64,  64,  4, 1, True,  1]()
+    tbmv_test[DType.float64,  64,  4, 0, True,  1]()
+    tbmv_test[DType.float32, 512, 16, 1, False, 0]()
+    tbmv_test[DType.float32, 512, 16, 0, False, 0]()
+    tbmv_test[DType.float32, 512, 16, 1, True,  0]()
+    tbmv_test[DType.float32, 512, 16, 0, True,  0]()
+    tbmv_test[DType.float64, 512, 16, 1, False, 0]()
+    tbmv_test[DType.float64, 512, 16, 0, False, 0]()
+    tbmv_test[DType.float64, 512, 16, 1, True,  0]()
+    tbmv_test[DType.float64, 512, 16, 0, True,  0]()
+
+def test_tbsv():
+    # uplo: 0=lower, 1=upper   trans: False/True   diag: 0=non-unit, 1=unit
+    tbsv_test[DType.float32,  64,  1, 1, False, 0]()
+    tbsv_test[DType.float32,  64,  1, 0, False, 0]()
+    tbsv_test[DType.float32,  64,  2, 1, True,  0]()
+    tbsv_test[DType.float32,  64,  2, 0, True,  0]()
+    tbsv_test[DType.float32,  64,  4, 1, False, 1]()
+    tbsv_test[DType.float32,  64,  4, 0, False, 1]()
+    tbsv_test[DType.float32,  64,  4, 1, True,  1]()
+    tbsv_test[DType.float32,  64,  4, 0, True,  1]()
+    tbsv_test[DType.float64,  64,  1, 1, False, 0]()
+    tbsv_test[DType.float64,  64,  1, 0, False, 0]()
+    tbsv_test[DType.float64,  64,  2, 1, True,  0]()
+    tbsv_test[DType.float64,  64,  2, 0, True,  0]()
+    tbsv_test[DType.float64,  64,  4, 1, False, 1]()
+    tbsv_test[DType.float64,  64,  4, 0, False, 1]()
+    tbsv_test[DType.float64,  64,  4, 1, True,  1]()
+    tbsv_test[DType.float64,  64,  4, 0, True,  1]()
+    tbsv_test[DType.float32, 512, 16, 1, False, 0]()
+    tbsv_test[DType.float32, 512, 16, 0, False, 0]()
+    tbsv_test[DType.float32, 512, 16, 1, True,  0]()
+    tbsv_test[DType.float32, 512, 16, 0, True,  0]()
+    tbsv_test[DType.float64, 512, 16, 1, False, 0]()
+    tbsv_test[DType.float64, 512, 16, 0, False, 0]()
+    tbsv_test[DType.float64, 512, 16, 1, True,  0]()
+    tbsv_test[DType.float64, 512, 16, 0, True,  0]()
+
 def main():
     print("--- MojoBLAS Level 2 routines testing ---")
     var args = argv()
@@ -860,10 +1170,13 @@ def main():
         if   args[i] == "gemv":  suite.test[test_gemv]()
         elif args[i] == "ger":   suite.test[test_ger]()
         elif args[i] == "sbmv":  suite.test[test_sbmv]()
+        elif args[i] == "spr":   suite.test[test_spr]()
         elif args[i] == "syr":   suite.test[test_syr]()
         elif args[i] == "syr2":  suite.test[test_syr2]()
         elif args[i] == "gbmv":  suite.test[test_gbmv]()
         elif args[i] == "trsv":  suite.test[test_trsv]()
+        elif args[i] == "tbmv":  suite.test[test_tbmv]()
+        elif args[i] == "tbsv":  suite.test[test_tbsv]()
         elif args[i] == "symv":  suite.test[test_symv]()
         else: print("unknown routine:", args[i])
     suite^.run()

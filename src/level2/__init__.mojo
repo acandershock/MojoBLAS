@@ -5,4 +5,7 @@ from .syr2_device import *
 from .gbmv_device import *
 from .sbmv_device import *
 from .trsv_device import *
+from .tbmv_device import *
+from .tbsv_device import *
 from .symv_device import *
+from .spr_device import *
