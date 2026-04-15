@@ -93,15 +93,14 @@ def parse_args(mut params: RunParams) -> Bool:
         parse_dim(params.dim_str, params.sizes)
     else:
         # Defaults:
+        params.sizes.append(256)
+        params.sizes.append(512)
         params.sizes.append(1024)
-        params.sizes.append(8192)
-        params.sizes.append(1048576)
-        params.sizes.append(8388608)
-        params.sizes.append(16777216)
+        params.sizes.append(2048)
+        params.sizes.append(4096)
 
-    if len(params.routines) == 0:
-        params.routines = ["gemv", "gbmv", "ger", "sbmv", "symv",
-                           "syr", "syr2", "trsv"]
+    if len(params.routines) == 0: # TODO: Add other level 3 routines as they are implemented
+        params.routines = ["gemm"]
 
     return True
 
@@ -120,8 +119,8 @@ def bench_gemm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext) :
     ctx.enqueue_copy(C_d, C_h)
     ctx.synchronize()
 
-    var alpha = generate_random_scalar[dtype](-1, 1)
-    var beta = generate_random_scalar[dtype](-1, 1)
+    var alpha = generate_random_scalar[dtype](-1,1)
+    var beta  = generate_random_scalar[dtype](-1,1)
 
     for _ in range(WARMUP) :
         blas_gemm(False, False, n , n , n, alpha, A_d.unsafe_ptr(), n, B_d.unsafe_ptr(), n, beta, C_d.unsafe_ptr(), n, ctx)
@@ -134,11 +133,13 @@ def bench_gemm[dtype: DType](n: Int, iters: Int, ctx: DeviceContext) :
         end = monotonic()
         timings[i] = Float32(end - start)
 
-    var min_max_mean = arr_min_max_mean(timings)
-
+    var min, max, mean = arr_min_max_mean(timings)
     #bandwidth: read A (n * n) + read B (n * n) + read C (n * n) + write C (n * n)
-    var bw_gbs = Float32(4 * n * n) / min_max_mean[2]
+    var bw_gbs = Float32(4 * n * n * bytes_per_elem(dtype)) / mean
 
+    print("gemm," + ctx.name() + "," + String(dtype) + "," + String(n) + "," + String(iters) +
+        "," + String(min * 1e-9) + "," + String(max * 1e-9) +
+        "," + String(mean * 1e-9) + "," + String(bw_gbs))
 
 
 def run_dtype[
