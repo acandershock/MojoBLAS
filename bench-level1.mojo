@@ -97,11 +97,11 @@ def parse_args(mut params: RunParams) -> Bool:
         parse_dim(params.dim_str, params.sizes)
     else:
         # Defaults:
-        params.sizes.append(1024)
-        params.sizes.append(8192)
-        params.sizes.append(1048576)
-        params.sizes.append(8388608)
-        params.sizes.append(16777216)
+        params.sizes.append(1 << 10)  # 2^10
+        params.sizes.append(1 << 14)  # 2^14
+        params.sizes.append(1 << 18)  # 2^18
+        params.sizes.append(1 << 22)  # 2^22
+        params.sizes.append(1 << 26)  # 2^26
 
     if len(params.routines) == 0:
         params.routines = ["asum", "axpy", "copy", "dot", "dotc",
