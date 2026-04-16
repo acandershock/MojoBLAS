@@ -263,11 +263,11 @@ def spr_test[
         if dtype == DType.float32:
             np_AP = np.array(py_AP, dtype=np.float32)
             np_x = np.array(py_x, dtype=np.float32)
-            sp_res = sp_blas.sspr(alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
+            sp_res = sp_blas.sspr(n, alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
         elif dtype == DType.float64:
             np_AP = np.array(py_AP, dtype=np.float64)
             np_x = np.array(py_x, dtype=np.float64)
-            sp_res = sp_blas.dspr(alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
+            sp_res = sp_blas.dspr(n, alpha, np_x, lower=uplo, ap=np_AP, overwrite_ap=False)
         else:
             print("Unsupported type: ", dtype)
             return
